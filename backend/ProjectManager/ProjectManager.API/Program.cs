@@ -2,6 +2,10 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using ProjectManager.DAL;
 using ProjectManager.DAL.Entities;
+using ProjectManager.BLL.Services;
+using ProjectManager.BLL.Services.Employee;
+using ProjectManager.BLL.Services.Project;
+using ProjectManager.BLL.Services.Task;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,6 +24,15 @@ builder.Services.AddIdentityCore<ApplicationUser>()
     .AddRoles<ApplicationRole>()
     .AddSignInManager()
     .AddEntityFrameworkStores<AppDbContext>();
+
+// This scans the BLL assembly and automatically registers our MappingProfile
+builder.Services.AddAutoMapper(typeof(ProjectManager.BLL.Mapping.MappingProfile));
+
+// Scoped lifetime means a new instance is created per each HTTP request from Vue.js
+builder.Services.AddScoped<IEmployeeService, EmployeeService>();
+builder.Services.AddScoped<IProjectService, ProjectService>();
+builder.Services.AddScoped<ITaskService, TaskService>();
+
 
 var builderControllers = builder.Services.AddControllers();
 
