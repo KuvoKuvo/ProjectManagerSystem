@@ -24,7 +24,7 @@ namespace ProjectManager.BLL.Services.Task
         /// Requirements check: Filters tasks by status/project and enforces security visibility.
         /// </summary>
 
-        public Task<IEnumerable<TaskDto>> GetTasksAsync(TaskQueryParameters parameters, int? currUserId = null, string? userRole = null)
+        public async Task<IEnumerable<TaskDto>> GetTasksAsync(TaskQueryParameters parameters, int? currUserId = null, string? userRole = null)
         {
             var query = _context.Tasks
                 .Include(t => t.Project)
@@ -32,46 +32,104 @@ namespace ProjectManager.BLL.Services.Task
                 .Include(t => t.Assignee)
                 .AsQueryable();
 
-            if (!string.IsNullOrEmpty(userRole) && currentUserId.HasValue)
+            //Role-based security filters
+            if (!string.IsNullOrEmpty(userRole) && currUserId.HasValue)
             {
                 if (userRole == "ProjectManager")
                 {
-                    query = query.Where(t => t.Project.ProjectManagerId == currentUserId);
+                    query = query.Where(t => t.Project.ProjectManagerId == currUserId.Value ||
+                        t.Project.ProjectEmployees.Any(pe => pe.EmployeeId == currUserId.Value));
                 }
                 else if (userRole == "Employee")
                 {
-
+                    query = query.Where(t => t.AssigneeId == currUserId.Value);
                 }
             }
-        }
-        public System.Threading.Tasks.Task ChangeAssigneeAsync(int taskId, int assigneeId)
-        {
-            throw new NotImplementedException();
+
+            //Apply Filters
+            if (parameters.Status.HasValue)
+                query = query.Where(t => t.Status == parameters.Status.Value);
+
+            if (parameters.ProjectId.HasValue)
+                query = query.Where(t => t.ProjectId == parameters.ProjectId.Value);
+
+            //Apply Sorting
+            query = parameters.SortBy.ToLower() switch
+            {
+                "name" => parameters.IsDescending ? query.OrderByDescending(t => t.Name) : query.OrderBy(t => t.Name),
+                "status" => parameters.IsDescending ? query.OrderByDescending(t => t.Status) : query.OrderBy(t => t.Status),
+                _ => parameters.IsDescending ? query.OrderByDescending(t => t.Priority) : query.OrderBy(t => t.Priority)
+            };
+
+            var tasks = await query.ToListAsync();
+            return _mapper.Map<IEnumerable<TaskDto>>(tasks);
         }
 
-        public Task<TaskDto> CreateAsync(TaskCreateDto dto)
+        public async Task<TaskDto?> GetByIdAsync(int id)
         {
-            throw new NotImplementedException();
+            var task = await _context.Tasks
+                .Include(t => t.Project)
+                .Include(t => t.Author)
+                .Include(t => t.Assignee)
+                .FirstOrDefaultAsync(t => t.Id == id);
+
+            return _mapper.Map<TaskDto>(task);
         }
 
-        public System.Threading.Tasks.Task DeleteAsync(int id)
+        public async Task<TaskDto> CreateAsync(TaskCreateDto dto)
         {
-            throw new NotImplementedException();
+            var task = _mapper.Map<DAL.Entities.Task>(dto);
+
+            _context.Tasks.Add(task);
+            await _context.SaveChangesAsync();
+
+            return await GetByIdAsync(task.Id) ?? _mapper.Map<TaskDto>(task);
         }
 
-        public Task<TaskDto?> GetByIdAsync(int id)
+        public async System.Threading.Tasks.Task DeleteAsync(int id)
         {
-            throw new NotImplementedException();
+            var task = await _context.Tasks.FindAsync(id);
+            if(task != null)
+            {
+                _context.Tasks.Remove(task);
+                await _context.SaveChangesAsync();
+            }
         }
 
-        public System.Threading.Tasks.Task UpdateAsync(TaskUpdateDto dto)
+        public async System.Threading.Tasks.Task UpdateAsync(TaskUpdateDto dto)
         {
-            throw new NotImplementedException();
+            var task = await _context.Tasks.FindAsync(dto.Id);
+            if (task == null)
+                throw new KeyNotFoundException($"Task with ID {dto.Id} not found.");
+
+            _mapper.Map(dto, task);
+            await _context.SaveChangesAsync();
         }
 
-        public System.Threading.Tasks.Task UpdateStatusAsync(int taskId, DAL.Entities.TaskStatus status)
+        /// <summary>
+        /// Requirements check: Allows quick status workflow changes (ToDo -> InProgress -> Done).
+        /// </summary>
+        public async System.Threading.Tasks.Task UpdateStatusAsync(int taskId, DAL.Entities.TaskStatus status)
         {
-            throw new NotImplementedException();
+            var task = await _context.Tasks.FindAsync(taskId);
+            if (task == null)
+                throw new KeyNotFoundException($"Task with ID {taskId} not found.");
+
+            task.Status = status;
+            await _context.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// Requirements check: Allows fluid task re-assignment among project team members.
+        /// </summary>
+        public async System.Threading.Tasks.Task ChangeAssigneeAsync(int taskId, int assigneeId)
+        {
+            var task = await _context.Tasks.FindAsync(taskId);
+            if (task == null)
+                throw new KeyNotFoundException($"Task with ID {taskId} not found.");
+
+            task.AssigneeId = assigneeId;
+            await _context.SaveChangesAsync();
         }
     }
 }
