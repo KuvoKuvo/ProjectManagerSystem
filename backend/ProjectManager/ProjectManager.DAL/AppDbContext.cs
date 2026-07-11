@@ -14,9 +14,9 @@ namespace ProjectManager.DAL
         }
 
         public DbSet<Project> Projects { get; set; } = null!;
-        public DbSet<Employee> Employees { get; set; }
-        public DbSet<ProjectEmployee> ProjectEmployees { get; set; }
-        public DbSet<Entities.Task> Tasks { get; set; }
+        public DbSet<Employee> Employees { get; set; } = null!;
+        public DbSet<ProjectEmployee> ProjectEmployees { get; set; } = null!;
+        public DbSet<Entities.Task> Tasks { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -69,7 +69,7 @@ namespace ProjectManager.DAL
                 .HasOne(u => u.Employee)
                 .WithOne()
                 .HasForeignKey<ApplicationUser>(u => u.EmployeeId)
-                .OnDelete(DeleteBehavior.SetNull);
+                .OnDelete(DeleteBehavior.SetNull);  
         }
     }
 }
