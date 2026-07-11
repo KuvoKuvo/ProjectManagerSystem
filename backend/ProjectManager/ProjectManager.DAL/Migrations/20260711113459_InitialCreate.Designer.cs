@@ -11,7 +11,7 @@ using ProjectManager.DAL;
 namespace ProjectManager.DAL.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260711081016_InitialCreate")]
+    [Migration("20260711113459_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -233,7 +233,7 @@ namespace ProjectManager.DAL.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("Lastname")
+                    b.Property<string>("LastName")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("TEXT");

@@ -13,10 +13,15 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<AppDbContext>(options => 
     options.UseSqlite(connectionString));
 
+builder.Services.AddAuthentication();
+
 // Register ASP.NET Core Identity Core services
 builder.Services.AddIdentityCore<ApplicationUser>()
     .AddRoles<ApplicationRole>()
+    .AddSignInManager()
     .AddEntityFrameworkStores<AppDbContext>();
+
+var builderControllers = builder.Services.AddControllers();
 
 var app = builder.Build();
 
@@ -27,9 +32,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
 app.UseAuthorization();
-
 app.MapControllers();
 
 using (var scope = app.Services.CreateScope())
@@ -39,7 +42,7 @@ using (var scope = app.Services.CreateScope())
     {
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
         var roleManagerActual = services.GetRequiredService<RoleManager<ApplicationRole>>();
-        ProjectManager.DAL.Seeding.DatabaseSeeder.SeedAsync(userManager, roleManagerActual).GetAwaiter().GetResult();
+        await ProjectManager.DAL.Seeding.DatabaseSeeder.SeedAsync(userManager, roleManagerActual);
     }
     catch (Exception ex)
     {

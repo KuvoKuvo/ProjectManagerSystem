@@ -30,7 +30,7 @@ namespace ProjectManager.DAL.Seeding
                 var defaultAdmin = new ApplicationUser
                 {
                     UserName = adminEmail,
-                    Email = adminEmail,
+                    Email = adminEmail, 
                     EmailConfirmed = true
                 };
 
