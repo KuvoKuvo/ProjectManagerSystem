@@ -10,7 +10,7 @@ namespace ProjectManager.BLL.Models
     public class TaskQueryParameters
     {
         // Filtering
-        public TaskStatus? Status { get; set; }
+        public ProjectManager.DAL.Entities.TaskStatus? Status { get; set; }
         public int? ProjectId { get; set; }
 
         // Sorting

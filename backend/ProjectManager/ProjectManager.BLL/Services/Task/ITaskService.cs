@@ -5,7 +5,7 @@ namespace ProjectManager.BLL.Services.Task
 {
     public interface ITaskService
     {
-        Task<IEnumerable<TaskDto>> GetTasksAsync(TaskQueryParameters parameters, int? currentUserId = null, string? userRole = null);
+        Task<IEnumerable<TaskDto>> GetTasksAsync(TaskQueryParameters parameters, int? currUserId = null, string? userRole = null);
         Task<TaskDto?> GetByIdAsync(int id);
         Task<TaskDto> CreateAsync(TaskCreateDto dto);
         System.Threading.Tasks.Task UpdateAsync(TaskUpdateDto dto);
