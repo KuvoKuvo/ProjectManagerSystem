@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="ProjectManager.API/ProjectManager.API.csproj" />
+  <Project Path="ProjectManager.BLL/ProjectManager.BLL.csproj" />
+  <Project Path="ProjectManager.DAL/ProjectManager.DAL.csproj" />
+  <Project Path="ProjectManager.Tests/ProjectManager.Tests.csproj" />
+</Solution>
