@@ -1,21 +1,28 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using ProjectManager.BLL.DTOs.Task;
-using ProjectManager.BLL.Services;
 using ProjectManager.BLL.Models;
+using ProjectManager.BLL.Services;
 using ProjectManager.BLL.Services.Task;
+using ProjectManager.DAL.Entities;
+using System.Security.Claims;
 
 namespace ProjectManager.API.Controllers
 {
 
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class TasksController : ControllerBase
     {
         private readonly ITaskService _taskService;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public TasksController(ITaskService taskService)
+        public TasksController(ITaskService taskService, UserManager<ApplicationUser> userManager)
         {
             _taskService = taskService;
+            _userManager = userManager;
         }
 
         // GET: api/tasks?projectId={id}&status=1&sortBy=priority&isDescending=false
@@ -23,6 +30,10 @@ namespace ProjectManager.API.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<TaskDto>>> GetTasks([FromQuery] TaskQueryParameters parameters)
         {
+            var user = await _userManager.GetUserAsync(User);
+            int? currentEmployeeId = user?.EmployeeId;
+            var userRole = User.FindFirstValue(ClaimTypes.Role);
+
             var tasks = await _taskService.GetTasksAsync(parameters, currUserId: null, userRole: null);
             return Ok(tasks);
         }
@@ -41,6 +52,7 @@ namespace ProjectManager.API.Controllers
 
         // POST: api/tasks
         [HttpPost]
+        [Authorize(Roles = "Director,ProjectManager")]
         public async Task<ActionResult<TaskDto>> Create([FromBody] TaskCreateDto dto)
         {
             if (!ModelState.IsValid)
@@ -52,9 +64,10 @@ namespace ProjectManager.API.Controllers
             return CreatedAtAction(nameof(GetById), new { id = createdTask.Id }, createdTask);
         }
 
-        // PUT: api/tasks/5
+        // PUT: api/tasks/{id}
         // Full update for internal fields (Name, Description, Deadlines, etc.)
         [HttpPut("{id:int}")]
+        [Authorize(Roles = "Director,ProjectManager")]
         public async Task<IActionResult> Update(int id, [FromBody] TaskUpdateDto dto)
         {
             if (id != dto.Id)
@@ -78,8 +91,9 @@ namespace ProjectManager.API.Controllers
             }
         }
 
-        // DELETE: api/tasks/5
+        // DELETE: api/tasks/{id}
         [HttpDelete("{id:int}")]
+        [Authorize(Roles = "Director,ProjectManager")]
         public async Task<IActionResult> Delete(int id)
         {
             var task = await _taskService.GetByIdAsync(id);
@@ -94,6 +108,8 @@ namespace ProjectManager.API.Controllers
 
         // PATCH: api/tasks/{id}/status
         // Requirements check: Lightweight endpoint to update task state (ToDo -> InProgress -> Done)
+        [HttpPatch("{id:int}/status")]
+        [Authorize]
         public async Task<IActionResult> UpdateStatus(int id, [FromBody] ProjectManager.DAL.Entities.TaskStatus status)
         {
             try
@@ -110,6 +126,7 @@ namespace ProjectManager.API.Controllers
         // PATCH: api/tasks/{id}/assignee
         // Requirements check: Lightweight endpoint to hot-swap responsible employee
         [HttpPatch("{id:int}/assignee")]
+        [Authorize(Roles = "Director,ProjectManager")]
         public async Task<IActionResult> ChangeAssignee(int id, [FromBody] int assigneeId)
         {
             try

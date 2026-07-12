@@ -1,23 +1,30 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using ProjectManager.API.Services;
 using ProjectManager.BLL.DTOs.Project;
 using ProjectManager.BLL.Models;
 using ProjectManager.BLL.Services;
 using ProjectManager.BLL.Services.Project;
+using ProjectManager.DAL.Entities;
+using System.Security.Claims;
 
 namespace ProjectManager.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class ProjectsController : ControllerBase
     {
         private readonly IProjectService _projectService;
         private readonly ILocalFileService _fileService;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public ProjectsController(IProjectService projectService, ILocalFileService fileService)
+        public ProjectsController(IProjectService projectService, ILocalFileService fileService, UserManager<ApplicationUser> userManager)
         {
             _projectService = projectService;
             _fileService = fileService;
+            _userManager = userManager;
         }
 
         // GET: api/projects?startDateFrom=2026-01-01&priority=2&sortBy=startDate&isDescending=true
@@ -25,6 +32,10 @@ namespace ProjectManager.API.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<ProjectDto>>> GetProjects([FromQuery] ProjectQueryParameters parameters)
         {
+            var user = await _userManager.GetUserAsync(User);
+            int? currentEmployeeId = user?.EmployeeId;
+            var userRole = User.FindFirstValue(ClaimTypes.Role);
+
             var projects = await _projectService.GetProjectsAsync(parameters, currUserId: null, userRole: null);
             return Ok(projects);
         }
@@ -45,6 +56,7 @@ namespace ProjectManager.API.Controllers
         // POST: api/projects
         // Requirements check: Collects all wizard steps data, including EmployeeIds array
         [HttpPost]
+        [Authorize(Roles = "Director")]
         public async Task<ActionResult<ProjectDetailsDto>> Create([FromBody] ProjectCreateDto dto)
         {
             if (!ModelState.IsValid)
@@ -63,6 +75,7 @@ namespace ProjectManager.API.Controllers
         // PUT: api/projects/{id}
         // Requirements check: Updates general data and synchronizes delta for assigned employees
         [HttpPut("{id:int}")]
+        [Authorize(Roles = "Director")]
         public async Task<IActionResult> Update(int id, [FromBody] ProjectUpdateDto dto)
         {
             if(id != dto.Id)
@@ -88,6 +101,7 @@ namespace ProjectManager.API.Controllers
 
         // DELETE: api/projects/{id}
         [HttpDelete("{id:int}")]
+        [Authorize(Roles = "Director")]
         public async Task<IActionResult> Delete(int id)
         {
             var project = await _projectService.GetByIdAsync(id);
@@ -103,6 +117,7 @@ namespace ProjectManager.API.Controllers
         // POST: api/projects/{id}/employees/{employeeId}
         // Requirements check: An endpoint for instant assignment of an individual employee through user interface actions
         [HttpPost("{id:int}/employees/{employeeId:int}")]
+        [Authorize(Roles = "Director,ProjectManager")]
         public async Task<IActionResult> AssignEmployee(int id, int employeeId)
         {
             try
@@ -119,6 +134,7 @@ namespace ProjectManager.API.Controllers
         // DELETE: api/projects/{id}/employees/{employeeId}
         // Requirements check: The endpoint for instant cancellation of an individual employee's appointment
         [HttpDelete("{id:int}/employees/{employeeId:int}")]
+        [Authorize(Roles = "Director,ProjectManager")]
         public async Task<IActionResult> RemoveEmployee(int id, int employeeId)
         {
             try
@@ -134,6 +150,7 @@ namespace ProjectManager.API.Controllers
 
         // POST: api/projects/5/documents
         [HttpPost("{id:int}/documents")]
+        [Authorize(Roles = "Director,ProjectManager")]
         public async Task<ActionResult<ProjectDocumentDto>> UploadDocument(int id, IFormFile file)
         {
             if (file == null || file.Length == 0)
@@ -143,10 +160,7 @@ namespace ProjectManager.API.Controllers
 
             try
             {
-                // 1. Save file using our beautiful new service
                 var relativePath = await _fileService.SaveFileAsync(file);
-
-                // 2. Link to database via BLL
                 var resultDto = await _projectService.AddDocumentAsync(id, file.FileName, relativePath);
 
                 return Ok(resultDto);

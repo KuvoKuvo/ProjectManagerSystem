@@ -1,12 +1,13 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using ProjectManager.DAL;
-using ProjectManager.DAL.Entities;
+using Microsoft.Extensions.Options;
+using ProjectManager.API.Services;
 using ProjectManager.BLL.Services;
 using ProjectManager.BLL.Services.Employee;
 using ProjectManager.BLL.Services.Project;
 using ProjectManager.BLL.Services.Task;
-using ProjectManager.API.Services;
+using ProjectManager.DAL;
+using ProjectManager.DAL.Entities;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,6 +18,22 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 // Register AppDbContext with SQLite provider
 builder.Services.AddDbContext<AppDbContext>(options => 
     options.UseSqlite(connectionString));
+
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SameSite = SameSiteMode.Strict;
+    options.Events.OnRedirectToLogin = context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+        return System.Threading.Tasks.Task.CompletedTask;
+    };
+    options.Events.OnRedirectToAccessDenied = context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+        return System.Threading.Tasks.Task.CompletedTask;
+    };
+});
 
 builder.Services.AddAuthentication();
 
@@ -48,6 +65,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
