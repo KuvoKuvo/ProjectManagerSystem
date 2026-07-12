@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using ProjectManager.BLL.DTOs.Employee;
 using ProjectManager.BLL.Services;
 using ProjectManager.BLL.Services.Employee;
@@ -7,6 +8,7 @@ namespace ProjectManager.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class EmployeesController : ControllerBase
     {
         private readonly IEmployeeService _employeeService;
@@ -47,6 +49,7 @@ namespace ProjectManager.API.Controllers
 
         // POST: api/employees
         [HttpPost]
+        [Authorize(Roles = "Director")]
         public async Task<ActionResult<EmployeeDto>> Create([FromBody] EmployeeCreateDto dto)
         {
             if (!ModelState.IsValid)
@@ -63,6 +66,7 @@ namespace ProjectManager.API.Controllers
 
         // PUT: api/employees/{id}
         [HttpPut("{id:int}")]
+        [Authorize(Roles = "Director")]
         public async Task<IActionResult> Update(int id, [FromBody] EmployeeUpdateDto dto)
         {
             if(id != dto.Id)
@@ -90,6 +94,7 @@ namespace ProjectManager.API.Controllers
 
         // DELETE: api/employees/{id}
         [HttpDelete("{id:int}")]
+        [Authorize(Roles = "Director")]
         public async Task<IActionResult> Delete(int id)
         {
             var employee = await _employeeService.GetByIdAsync(id);
