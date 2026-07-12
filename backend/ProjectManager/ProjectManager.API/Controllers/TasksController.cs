@@ -34,7 +34,7 @@ namespace ProjectManager.API.Controllers
             int? currentEmployeeId = user?.EmployeeId;
             var userRole = User.FindFirstValue(ClaimTypes.Role);
 
-            var tasks = await _taskService.GetTasksAsync(parameters, currUserId: null, userRole: null);
+            var tasks = await _taskService.GetTasksAsync(parameters, currentEmployeeId, userRole);
             return Ok(tasks);
         }
 
