@@ -18,6 +18,8 @@ namespace ProjectManager.DAL
         public DbSet<ProjectEmployee> ProjectEmployees { get; set; } = null!;
         public DbSet<Entities.Task> Tasks { get; set; } = null!;
 
+        public DbSet<ProjectDocument> ProjectDocuments { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -69,7 +71,14 @@ namespace ProjectManager.DAL
                 .HasOne(u => u.Employee)
                 .WithOne()
                 .HasForeignKey<ApplicationUser>(u => u.EmployeeId)
-                .OnDelete(DeleteBehavior.SetNull);  
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // 5. Configure Project -> ProjectDocument (One-to-Many)
+            modelBuilder.Entity<ProjectDocument>()
+                .HasOne(pd => pd.Project)
+                .WithMany(p => p.Documents)
+                .HasForeignKey(pd => pd.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

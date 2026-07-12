@@ -6,6 +6,7 @@ using ProjectManager.BLL.Services;
 using ProjectManager.BLL.Services.Employee;
 using ProjectManager.BLL.Services.Project;
 using ProjectManager.BLL.Services.Task;
+using ProjectManager.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,6 +33,8 @@ builder.Services.AddAutoMapper(typeof(ProjectManager.BLL.Mapping.MappingProfile)
 builder.Services.AddScoped<IEmployeeService, EmployeeService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<ITaskService, TaskService>();
+
+builder.Services.AddScoped<ILocalFileService, LocalFileService>();
 
 
 var builderControllers = builder.Services.AddControllers();

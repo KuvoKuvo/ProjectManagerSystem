@@ -2,17 +2,12 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace ProjectManager.DAL.Entities
+namespace ProjectManager.BLL.DTOs.Project
 {
-    public class ProjectDocument
+    public class ProjectDocumentDto
     {
         public int Id { get; set; }
         public string FileName { get; set; } = string.Empty;
         public string FilePath { get; set; } = string.Empty;
-
-
-        public int ProjectId { get; set; }
-        public virtual Project Project { get; set; } = null!;
     }
 }
-

@@ -174,6 +174,34 @@ namespace ProjectManager.BLL.Services.Project
                 await _context.SaveChangesAsync();
             }
         }
-     
+
+        public async Task<ProjectDocumentDto> AddDocumentAsync(int projectId, string fileName, string filePath)
+        {
+            // Check if project exists
+            var project = await _context.Projects.FindAsync(projectId);
+            if (project == null)
+            {
+                throw new KeyNotFoundException($"Project with ID {projectId} not found.");
+            }
+
+            var document = new ProjectDocument
+            {
+                ProjectId = projectId,
+                FileName = fileName,
+                FilePath = filePath
+            };
+
+            _context.ProjectDocuments.Add(document);
+            await _context.SaveChangesAsync();
+
+            // Map to DTO manually or via AutoMapper
+            return new ProjectDocumentDto
+            {
+                Id = document.Id,
+                FileName = document.FileName,
+                FilePath = document.FilePath
+            };
+        }
+
     }
 }

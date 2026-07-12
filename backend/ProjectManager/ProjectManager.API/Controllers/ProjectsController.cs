@@ -1,7 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using ProjectManager.API.Services;
 using ProjectManager.BLL.DTOs.Project;
-using ProjectManager.BLL.Services;
 using ProjectManager.BLL.Models;
+using ProjectManager.BLL.Services;
 using ProjectManager.BLL.Services.Project;
 
 namespace ProjectManager.API.Controllers
@@ -11,10 +12,12 @@ namespace ProjectManager.API.Controllers
     public class ProjectsController : ControllerBase
     {
         private readonly IProjectService _projectService;
+        private readonly ILocalFileService _fileService;
 
-        public ProjectsController(IProjectService projectService)
+        public ProjectsController(IProjectService projectService, ILocalFileService fileService)
         {
             _projectService = projectService;
+            _fileService = fileService;
         }
 
         // GET: api/projects?startDateFrom=2026-01-01&priority=2&sortBy=startDate&isDescending=true
@@ -126,6 +129,31 @@ namespace ProjectManager.API.Controllers
             catch (Exception ex)
             {
                 return BadRequest(new { Message = ex.Message });
+            }
+        }
+
+        // POST: api/projects/5/documents
+        [HttpPost("{id:int}/documents")]
+        public async Task<ActionResult<ProjectDocumentDto>> UploadDocument(int id, IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest(new { Message = "No file uploaded." });
+            }
+
+            try
+            {
+                // 1. Save file using our beautiful new service
+                var relativePath = await _fileService.SaveFileAsync(file);
+
+                // 2. Link to database via BLL
+                var resultDto = await _projectService.AddDocumentAsync(id, file.FileName, relativePath);
+
+                return Ok(resultDto);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { Message = ex.Message });
             }
         }
     }
