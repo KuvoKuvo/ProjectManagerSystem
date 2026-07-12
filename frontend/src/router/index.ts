@@ -1,8 +1,62 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import LoginView from '@/views/LoginView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  routes: [],
+  routes: [
+    {
+      path: '/login',
+      name: 'login',
+      component: LoginView,
+      meta: { requiresGuest: true }
+    },
+    {
+      path: '/',
+      name: 'dashboard',
+      component: () => import('@/views/DashboardView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/projects/create',
+      name: 'create-project',
+      component: () => import('@/views/CreateProjectView.vue'),
+      meta: { 
+        requiresAuth: true, 
+        allowedRoles: ['Director', 'ProjectManager']
+      }
+    }
+  ],
+})
+
+router.beforeEach(async (to) => {
+
+  const authStore = useAuthStore()
+
+  if (authStore.isLoading){
+    await authStore.checkAuth()
+  }
+
+  if(to.meta.requiresAuth && !authStore.isAuthenticated){
+    return {name: 'login'}
+  }
+
+  if (to.meta.requiresGuest && authStore.isAuthenticated) {
+    return { name: 'dashboard' }
+  }
+
+  if (to.meta.allowedRoles){
+    const allowed = to.meta.allowedRoles as string[]
+    const userRole = authStore.user?.role || ''
+
+    if (!allowed.includes(userRole)) {
+      alert('Access is prohibited! You dont have enough rights') 
+      return { name: 'dashboard' }
+    }
+  }
+
+  return true
+
 })
 
 export default router
