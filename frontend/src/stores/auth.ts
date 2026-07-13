@@ -2,8 +2,10 @@ import { defineStore } from "pinia";
 import api from '@/api/axios'
 
 interface User {
+    id: number
     email: string
     role: 'Director' | 'ProjectManager' | 'Employee'
+    isTemporaryPassword: boolean
 }
 
 export const useAuthStore = defineStore('auth', {
@@ -17,14 +19,16 @@ export const useAuthStore = defineStore('auth', {
     getters: {
         isDirector: (state) => state.user?.role === 'Director',
         isProjectManager: (state) => state.user?.role === 'ProjectManager',
-        isEmployee: (state) => state.user?.role === 'Employee'
+        isEmployee: (state) => state.user?.role === 'Employee',
+        mustChangePassword: (state) => state.user?.isTemporaryPassword === true
     },
     
     actions: {
 
         async login(email: string, regPassword: string){
-            await api.post('/api/Account/login', {email, password: regPassword})
-            await this.checkAuth()
+            const response = await api.post('/api/Account/login', { email, password: regPassword })
+            this.user = response.data
+            this.isAuthenticated = true
         },
 
         async logout() {
@@ -45,7 +49,7 @@ export const useAuthStore = defineStore('auth', {
                 this.isAuthenticated = false            
             }
             finally{
-                    this.isLoading = false
+                this.isLoading = false
             }
         }
     }

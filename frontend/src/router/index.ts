@@ -12,10 +12,16 @@ const router = createRouter({
       meta: { requiresGuest: true }
     },
     {
+      path: '/change-password',
+      name: 'change-password',
+      component: () => import('@/views/ChangePasswordView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/',
       name: 'dashboard',
       component: () => import('@/views/DashboardView.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, requiresRealPassword: true }
     },
     {
       path: '/projects/create',
@@ -23,6 +29,7 @@ const router = createRouter({
       component: () => import('@/views/CreateProjectView.vue'),
       meta: { 
         requiresAuth: true, 
+        requiresRealPassword: true,
         allowedRoles: ['Director', 'ProjectManager']
       }
     },
@@ -30,7 +37,8 @@ const router = createRouter({
       path: '/employees/create',
       name: 'create-employee',
       component: () => import('@/views/CreateEmployeeView.vue'),
-      meta: { requiresAuth: true, roles: ['Director', 'Admin'] }
+      // SENIOR FIX: Changed 'Admin' to 'Director' to match backend roles architecture
+      meta: { requiresAuth: true, requiresRealPassword: true, allowedRoles: ['Director'] }
     }
   ],
 })
@@ -51,12 +59,21 @@ router.beforeEach(async (to) => {
     return { name: 'dashboard' }
   }
 
+  if (authStore.isAuthenticated && authStore.mustChangePassword && to.name !== 'change-password') {
+    alert('You must change your temporary password before proceeding!')
+    return { name: 'change-password' }
+  }
+
+  if (authStore.isAuthenticated && !authStore.mustChangePassword && to.name === 'change-password') {
+    return { name: 'dashboard' }
+  }
+
   if (to.meta.allowedRoles){
     const allowed = to.meta.allowedRoles as string[]
     const userRole = authStore.user?.role || ''
 
     if (!allowed.includes(userRole)) {
-      alert('Access is prohibited! You dont have enough rights') 
+      alert('Access is prohibited! You do not have enough rights.') 
       return { name: 'dashboard' }
     }
   }

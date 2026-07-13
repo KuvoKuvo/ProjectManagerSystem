@@ -10,7 +10,8 @@ const form = reactive({
   firstName: '',
   lastName: '',
   middleName: '',
-  email: ''
+  email: '',
+  role: 'Employee'
 })
 
 // A state for storing the generated one-time password
@@ -37,7 +38,8 @@ const handleSubmit = async () => {
       firstName: form.firstName,
       lastName: form.lastName,
       middleName: form.middleName,
-      email: form.email
+      email: form.email,
+      role: form.role
     })
 
     if (response.data && response.data.temporaryPassword) {
@@ -117,6 +119,15 @@ const handleSubmit = async () => {
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Email *</label>
             <input v-model="form.email" type="email" required class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:border-emerald-500 focus:outline-none text-sm" placeholder="ivanov@company.com" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">System Role *</label>
+            <select v-model="form.role" required class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:border-emerald-500 focus:outline-none text-sm bg-white">
+              <option value="Employee">Employee</option>
+              <option value="ProjectManager">Project Manager</option>
+              <option value="Director">Director</option>
+            </select>
           </div>
 
           <button 
