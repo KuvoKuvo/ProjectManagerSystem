@@ -28,6 +28,12 @@ namespace ProjectManager.DAL.Entities
         [MaxLength(100)]
         public string Email { get; set; } = string.Empty;
 
+        [Required]
+        public string PasswordHash { get; set; } = string.Empty;
+
+        [Required]
+        public bool IsTemporaryPassword { get; set; } = true;
+
         public virtual ICollection<ProjectEmployee> ProjectEmployees { get; set; } = new List<ProjectEmployee>();
         public virtual ICollection<Project> ManagedProjects { get; set; } = new List<Project>();
         public virtual ICollection<Task> CreatedTasks { get; set; } = new List<Task>();
