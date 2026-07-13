@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ProjectManager.DAL;
 
@@ -10,9 +11,11 @@ using ProjectManager.DAL;
 namespace ProjectManager.DAL.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260713071247_AddEmployeeSecurityFields")]
+    partial class AddEmployeeSecurityFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.9");
@@ -292,30 +295,6 @@ namespace ProjectManager.DAL.Migrations
                     b.ToTable("Projects");
                 });
 
-            modelBuilder.Entity("ProjectManager.DAL.Entities.ProjectDocument", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("FileName")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("FilePath")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("ProjectId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProjectId");
-
-                    b.ToTable("ProjectDocument");
-                });
-
             modelBuilder.Entity("ProjectManager.DAL.Entities.ProjectEmployee", b =>
                 {
                     b.Property<int>("ProjectId")
@@ -445,17 +424,6 @@ namespace ProjectManager.DAL.Migrations
                     b.Navigation("ProjectManager");
                 });
 
-            modelBuilder.Entity("ProjectManager.DAL.Entities.ProjectDocument", b =>
-                {
-                    b.HasOne("ProjectManager.DAL.Entities.Project", "Project")
-                        .WithMany("Documents")
-                        .HasForeignKey("ProjectId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Project");
-                });
-
             modelBuilder.Entity("ProjectManager.DAL.Entities.ProjectEmployee", b =>
                 {
                     b.HasOne("ProjectManager.DAL.Entities.Employee", "Employee")
@@ -515,8 +483,6 @@ namespace ProjectManager.DAL.Migrations
 
             modelBuilder.Entity("ProjectManager.DAL.Entities.Project", b =>
                 {
-                    b.Navigation("Documents");
-
                     b.Navigation("ProjectEmployees");
 
                     b.Navigation("Tasks");

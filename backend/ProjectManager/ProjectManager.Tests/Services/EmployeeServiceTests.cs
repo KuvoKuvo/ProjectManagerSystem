@@ -18,9 +18,9 @@ namespace ProjectManager.Tests.Services
 
             context.Employees.AddRange(new List<Employee>()
             {
-                new Employee { Id = 1, FirstName = "Ivan", LastName = "Ivanov", Email = "ivan@test.com", MiddleName = "Ivanovich" },
-                new Employee { Id = 2, FirstName = "Petr", LastName = "Petrov", Email = "petr@test.com", MiddleName = "Petrovich" },
-                new Employee { Id = 3, FirstName = "Sidor", LastName = "Sidorov", Email = "sidor@ivan-company.com", MiddleName = "Sidorovich" }
+                new Employee { Id = 1, FirstName = "Ivan", LastName = "Ivanov", Email = "ivan@test.com", MiddleName = "Ivanovich", PasswordHash = "hash1", IsTemporaryPassword = false },
+                new Employee { Id = 2, FirstName = "Petr", LastName = "Petrov", Email = "petr@test.com", MiddleName = "Petrovich", PasswordHash = "hash2", IsTemporaryPassword = false },
+                new Employee { Id = 3, FirstName = "Sidor", LastName = "Sidorov", Email = "sidor@ivan-company.com", MiddleName = "Sidorovich", PasswordHash = "hash3", IsTemporaryPassword = false }
             });
             await context.SaveChangesAsync();
 
