@@ -50,18 +50,26 @@ namespace ProjectManager.API.Controllers
         // POST: api/employees
         [HttpPost]
         [Authorize(Roles = "Director")]
-        public async Task<ActionResult<EmployeeDto>> Create([FromBody] EmployeeCreateDto dto)
+        public async Task<ActionResult<EmployeeCreatedResponseDto>> Create([FromBody] EmployeeCreateDto dto)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            var createdEmployee = await _employeeService.CreateAsync(dto);
-            return CreatedAtAction(nameof(GetById), new
+            try
             {
-                id = createdEmployee.Id
-            }, createdEmployee);
+
+                var createdResponse = await _employeeService.CreateAsync(dto);
+                return CreatedAtAction(nameof(GetById), new
+                {
+                    id = createdResponse.Employee.Id
+                }, createdResponse);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
         }
 
         // PUT: api/employees/{id}
