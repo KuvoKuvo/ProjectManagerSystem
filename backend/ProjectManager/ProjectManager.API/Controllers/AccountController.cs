@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using ProjectManager.BLL.DTOs.Account;
 using ProjectManager.DAL.Entities;
@@ -80,6 +81,40 @@ namespace ProjectManager.API.Controllers
                 Role = roles.FirstOrDefault(),
                 IsTemporaryPassword = user.IsTemporaryPassword
             });
+        }
+
+        [HttpPost("change-password")]
+        [Authorize]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
+        {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
+            var userId = _userManager.GetUserId(User);
+            var user = await _userManager.FindByIdAsync(userId!);
+            if (user == null) return Unauthorized();
+
+            var isCurrPasswordValid = await _userManager.CheckPasswordAsync(user, dto.CurrPassword);
+            if (!isCurrPasswordValid)
+            {
+                return BadRequest(new { Message = "Failed to change password. Ensure your current password is correct." });
+            }
+
+            var passwordHash = _userManager.PasswordHasher.HashPassword(user, dto.NewPassword);
+            user.PasswordHash = passwordHash;
+
+            user.IsTemporaryPassword = false;
+
+            await _userManager.UpdateSecurityStampAsync(user);
+
+            var updateResult = await _userManager.UpdateAsync(user);
+            if (!updateResult.Succeeded)
+            {
+                var errors = string.Join(", ", updateResult.Errors.Select(e => e.Description));
+                return BadRequest(new { Message = errors });
+            }
+
+            await _signInManager.RefreshSignInAsync(user);
+            return Ok(new { Message = "Your password has been successfully updated." });
         }
     }
 }

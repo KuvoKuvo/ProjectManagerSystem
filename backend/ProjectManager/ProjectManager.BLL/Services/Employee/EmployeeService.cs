@@ -43,13 +43,15 @@ namespace ProjectManager.BLL.Services.Employee
             if(string.IsNullOrEmpty(searchTrim))
                 return Enumerable.Empty<EmployeeDto>();
 
-            var lowerTrim = searchTrim.ToLower();
+            var pattern = $"%{searchTrim.Trim()}%";
 
             var filteredEmployees = await _userManager.Users
-                .Where(e => e.FirstName.ToLower().Contains(lowerTrim) ||
-                            e.LastName.ToLower().Contains(lowerTrim) ||
-                            e.MiddleName.ToLower().Contains(lowerTrim) ||
-                            e.Email!.ToLower().Contains(lowerTrim))
+                .Where(e => Microsoft.EntityFrameworkCore.EF.Functions.Like(e.FirstName, pattern) ||
+                            Microsoft.EntityFrameworkCore.EF.Functions.Like(e.LastName, pattern) ||
+                            Microsoft.EntityFrameworkCore.EF.Functions.Like(e.MiddleName, pattern) ||
+                            Microsoft.EntityFrameworkCore.EF.Functions.Like(e.Email, pattern) ||
+                            Microsoft.EntityFrameworkCore.EF.Functions.Like(e.FirstName + " " + e.LastName, pattern) ||
+                            Microsoft.EntityFrameworkCore.EF.Functions.Like(e.LastName + " " + e.FirstName, pattern))
                 .ToListAsync();
 
             return _mapper.Map<IEnumerable<EmployeeDto>>(filteredEmployees);

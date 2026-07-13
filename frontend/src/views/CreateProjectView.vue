@@ -43,7 +43,7 @@ const fetchEmployees = async (term: string) => {
     }
     try{
         isSearching.value = true
-        const response = await api.get(`/api/Employees/search?searchTrim=${encodeURIComponent(term)}`)
+        const response = await api.get(`/api/Employees/search?=${encodeURIComponent(term)}`)
         searchResult.value = response.data
     }
     catch (err){
@@ -177,34 +177,44 @@ const submitProject = async () => {
         isLoading.value = true
         globalError.value = ''
 
-        const formData = new FormData()
-        formData.append('Name', wizardData.name)
-        formData.append('StartDate', wizardData.startDate)
-        formData.append('EndDate', wizardData.endDate)
-        formData.append('Priority', wizardData.priority.toString())
-        formData.append('CustomerCompany', wizardData.customerCompany)
-        formData.append('ExecutorCompany', wizardData.executorCompany)
-        formData.append('ProjectManagerId', wizardData.projectManagerId?.toString() || '')
+        const projectPayload = {
+          name: wizardData.name,
+          startDate: wizardData.startDate,
+          endDate: wizardData.endDate || null,
+          priority: wizardData.priority,
+          customerCompany: wizardData.customerCompany,
+          executorCompany: wizardData.executorCompany,
+          projectManagerId: wizardData.projectManagerId,
+          employeeIds: wizardData.employees.map(emp => emp.id) 
+        }
 
-        wizardData.employees.forEach((emp) => {
-            formData.append('EmployeeIds', emp.id.toString())
-        })
+        const projectResponse = await api.post('/api/projects', projectPayload)
+        const createdProjectId = projectResponse.data.id
 
-        wizardData.files.forEach((file) => {
-            formData.append('UploadedFiles', file)
-        })
+        if(wizardData.files.length > 0 && createdProjectId){
+          const uploadPromises = wizardData.files.map(async (file) => {
+            const fileFormData = new FormData()
+            fileFormData.append('file', file)
 
-        await api.post('/api/Projects', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-        })
-
+            return api.post(`/api/projects/${createdProjectId}/documents`, fileFormData, {
+              headers: { 'Content-Type': 'multipart/form-data' }
+            })
+          })
+          await Promise.all(uploadPromises)
+        }
         router.push({ name: 'dashboard' })
 
     }
-    catch (err: any){
-        globalError.value = err.response?.data?.message || 'An error occurred when creating the project.'
+    catch (err: any) {
+        console.error('Error during project submission:', err)
+        if (err.response?.data?.errors) {
+            const validationErrors = Object.values(err.response.data.errors).flat().join(', ')
+            globalError.value = `Validation error: ${validationErrors}`
+        } else {
+            globalError.value = err.response?.data?.message || 'An error occurred when creating the project.'
+        }
     }
-    finally{
+    finally {
         isLoading.value = false
     }
 }
