@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using ProjectManager.BLL.DTOs.Employee;
 using ProjectManager.DAL;
@@ -12,22 +13,24 @@ namespace ProjectManager.BLL.Services.Employee
     {
         private readonly AppDbContext _context;
         private readonly IMapper _mapper;
+        private readonly UserManager<DAL.Entities.Employee> _userManager;
 
-        public EmployeeService(AppDbContext context, IMapper mapper)
+        public EmployeeService(AppDbContext context, IMapper mapper, UserManager<DAL.Entities.Employee> userManager)
         {
             _context = context;
             _mapper = mapper;
+            _userManager = userManager;
         }
 
         public async Task<IEnumerable<EmployeeDto>> GetAllAsync()
         {
-            var employees = await _context.Employees.ToListAsync();
+            var employees = await _userManager.Users.ToListAsync();
             return _mapper.Map<IEnumerable<EmployeeDto>>(employees);
         }
 
         public async Task<EmployeeDto?> GetByIdAsync(int id)
         {
-            var employee = await _context.Employees.FindAsync(id);
+            var employee = await _userManager.FindByIdAsync(id.ToString());
             return _mapper.Map<EmployeeDto>(employee);
         }
 
@@ -42,59 +45,74 @@ namespace ProjectManager.BLL.Services.Employee
 
             var lowerTrim = searchTrim.ToLower();
 
-            var filtredEmployees = await _context.Employees
+            var filteredEmployees = await _userManager.Users
                 .Where(e => e.FirstName.ToLower().Contains(lowerTrim) ||
-                e.LastName.ToLower().Contains(lowerTrim) ||
-                e.MiddleName.ToLower().Contains(lowerTrim) ||
-                e.Email.ToLower().Contains(lowerTrim))
+                            e.LastName.ToLower().Contains(lowerTrim) ||
+                            e.MiddleName.ToLower().Contains(lowerTrim) ||
+                            e.Email!.ToLower().Contains(lowerTrim))
                 .ToListAsync();
 
-            return _mapper.Map<IEnumerable<EmployeeDto>>(filtredEmployees);
+            return _mapper.Map<IEnumerable<EmployeeDto>>(filteredEmployees);
         }
 
         public async Task<EmployeeCreatedResponseDto> CreateAsync(EmployeeCreateDto dto)
         {
-            var emailExists = await _context.Employees.AnyAsync(e => e.Email.ToLower() == dto.Email.ToLower());
-            if (emailExists)
+            var identityUserExists = await _userManager.FindByEmailAsync(dto.Email);
+            if (identityUserExists != null)
             {
                 throw new ArgumentException($"The employee with the Email '{dto.Email}' has already been registered.");
             }
 
             string tempPassword = GenerateTemporaryPassword();
-            var employee = _mapper.Map<DAL.Entities.Employee>(dto);
 
-            employee.PasswordHash = HashPassword(tempPassword);
+            var employee = _mapper.Map<DAL.Entities.Employee>(dto);
+            employee.UserName = dto.Email;
+            employee.EmailConfirmed = true;
             employee.IsTemporaryPassword = true;
 
-            _context.Employees.Add(employee);
-            await _context.SaveChangesAsync();
+            var identityResult = await _userManager.CreateAsync(employee, tempPassword);
+
+            if (!identityResult.Succeeded)
+            {
+                var errors = string.Join(", ", identityResult.Errors.Select(e => e.Description));
+                throw new Exception($"Error in creating employee account: {errors}");
+            }
+
+            await _userManager.AddToRoleAsync(employee, dto.Role);
 
             return new EmployeeCreatedResponseDto
             {
                 Employee = _mapper.Map<EmployeeDto>(employee),
-                TemporaryPassword = tempPassword
+                TemporaryPassword = tempPassword 
             };
         }
 
         public async System.Threading.Tasks.Task UpdateAsync(EmployeeUpdateDto dto)
         {
-            var employee = await _context.Employees.FindAsync(dto.Id);
+            var employee = await _userManager.FindByIdAsync(dto.Id.ToString());
             if (employee == null)
             {
                 throw new KeyNotFoundException($"Employee with ID {dto.Id} not found.");
             }
 
             _mapper.Map(dto, employee);
-            await _context.SaveChangesAsync();
+
+            employee.UserName = dto.Email;
+
+            var result = await _userManager.UpdateAsync(employee);
+            if (!result.Succeeded)
+            {
+                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                throw new Exception($"Failed to update employee: {errors}");
+            }
         }
 
         public async System.Threading.Tasks.Task DeleteAsync(int id)
         {
-            var employee = await _context.Employees.FindAsync(id);
-            if(employee != null)
+            var employee = await _userManager.FindByIdAsync(id.ToString());
+            if (employee != null)
             {
-                _context.Employees.Remove(employee);
-                await _context.SaveChangesAsync();
+                await _userManager.DeleteAsync(employee);
             }
         }
 
@@ -104,12 +122,6 @@ namespace ProjectManager.BLL.Services.Employee
             var random = new Random();
             return new string(Enumerable.Repeat(validChars, 10)
                 .Select(s => s[random.Next(s.Length)]).ToArray());
-        }
-
-        private string HashPassword(string password)
-        {
-            byte[] bytes = SHA256.HashData(Encoding.UTF8.GetBytes(password));
-            return Convert.ToBase64String(bytes);
         }
     }
 }

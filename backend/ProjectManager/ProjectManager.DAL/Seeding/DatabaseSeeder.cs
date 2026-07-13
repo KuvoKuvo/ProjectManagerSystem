@@ -9,36 +9,41 @@ namespace ProjectManager.DAL.Seeding
     /// </summary>
     public static class DatabaseSeeder
     {
-        public static async System.Threading.Tasks.Task SeedAsync(UserManager<ApplicationUser> userManager, RoleManager<ApplicationRole> roleManager)
+        public static async System.Threading.Tasks.Task SeedAsync(UserManager<Employee> userManager, RoleManager<ApplicationRole> roleManager)
         {
-            string[] roleNames = { "Director", "ProjectManager", "Employee" };
-
-            foreach(var roleName in roleNames)
             {
-                var roleExists = await roleManager.RoleExistsAsync(roleName);
-                if (!roleExists)
+                string[] roleNames = { "Director", "ProjectManager", "Employee" };
+
+                foreach (var roleName in roleNames)
                 {
-                    await roleManager.CreateAsync(new ApplicationRole(roleName));
+                    var roleExists = await roleManager.RoleExistsAsync(roleName);
+                    if (!roleExists)
+                    {
+                        await roleManager.CreateAsync(new ApplicationRole(roleName));
+                    }
                 }
-            }
 
-            const string adminEmail = "admin@projectmanager.com";
-            var adminUser = await userManager.FindByEmailAsync(adminEmail);
+                const string adminEmail = "admin@projectmanager.com";
+                var adminUser = await userManager.FindByEmailAsync(adminEmail);
 
-            if (adminUser == null)
-            {
-                var defaultAdmin = new ApplicationUser
+                if (adminUser == null)
                 {
-                    UserName = adminEmail,
-                    Email = adminEmail, 
-                    EmailConfirmed = true
-                };
+                    var defaultAdmin = new Employee
+                    {
+                        UserName = adminEmail,
+                        Email = adminEmail,
+                        EmailConfirmed = true,
+                        FirstName = "System",
+                        LastName = "Admin",
+                        IsTemporaryPassword = false
+                    };
 
-                var result = await userManager.CreateAsync(defaultAdmin, "SecurePass123!");
+                    var result = await userManager.CreateAsync(defaultAdmin, "SecurePass123!");
 
-                if (result.Succeeded)
-                {
-                    await userManager.AddToRoleAsync(defaultAdmin, "Director");
+                    if (result.Succeeded)
+                    {
+                        await userManager.AddToRoleAsync(defaultAdmin, "Director");
+                    }
                 }
             }
         }

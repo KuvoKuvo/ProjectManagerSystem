@@ -10,10 +10,10 @@ namespace ProjectManager.API.Controllers
     [Route("api/[controller]")]
     public class AccountController : ControllerBase
     {
-        private readonly SignInManager<ApplicationUser> _signInManager;
-        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly SignInManager<Employee> _signInManager;
+        private readonly UserManager<Employee> _userManager;
 
-        public AccountController(SignInManager<ApplicationUser> signInManager, UserManager<ApplicationUser> userManager)
+        public AccountController(SignInManager<Employee> signInManager, UserManager<Employee> userManager)
         {
             _signInManager = signInManager;
             _userManager = userManager;
@@ -37,8 +37,10 @@ namespace ProjectManager.API.Controllers
                 return Ok(new
                 {
                     Message = "Logged in successfully.",
+                    Id = user!.Id,  
                     Email = user!.Email,
-                    Role = roles.FirstOrDefault()
+                    Role = roles.FirstOrDefault(),
+                    IsTemporaryPassword = user.IsTemporaryPassword
                 });
             }
 
@@ -50,7 +52,7 @@ namespace ProjectManager.API.Controllers
         public async Task<IActionResult> Logout()
         {
             await _signInManager.SignOutAsync();
-            return Ok(new { Message = "Logged out successfully." });
+            return NoContent();
         }
 
         // GET: api/account/me
@@ -64,12 +66,19 @@ namespace ProjectManager.API.Controllers
             }
 
             var user = await _userManager.GetUserAsync(User);
-            var roles = await _userManager.GetRolesAsync(user!);
+            if (user == null)
+            {
+                return Unauthorized();
+            }
+
+            var roles = await _userManager.GetRolesAsync(user);
 
             return Ok(new
             {
-                Email = user!.Email,
-                Role = roles.FirstOrDefault()
+                Id = user.Id,
+                Email = user.Email,
+                Role = roles.FirstOrDefault(),
+                IsTemporaryPassword = user.IsTemporaryPassword
             });
         }
     }

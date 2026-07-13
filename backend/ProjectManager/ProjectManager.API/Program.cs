@@ -29,10 +29,11 @@ builder.Services.AddAuthentication(options =>
 .AddIdentityCookies();
 
 // Register ASP.NET Core Identity Core services
-builder.Services.AddIdentityCore<ApplicationUser>(options =>
+builder.Services.AddIdentityCore<Employee>(options =>
 {
     options.Password.RequireDigit = true;
     options.Password.RequiredLength = 6;
+    options.User.RequireUniqueEmail = true;
 })
 .AddRoles<ApplicationRole>()
 .AddSignInManager()
@@ -106,7 +107,7 @@ using (var scope = app.Services.CreateScope())
     var services = scope.ServiceProvider;
     try
     {
-        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+        var userManager = services.GetRequiredService<UserManager<Employee>>();
         var roleManagerActual = services.GetRequiredService<RoleManager<ApplicationRole>>();
         await ProjectManager.DAL.Seeding.DatabaseSeeder.SeedAsync(userManager, roleManagerActual);
     }

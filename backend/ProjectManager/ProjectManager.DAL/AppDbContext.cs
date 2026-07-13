@@ -7,26 +7,20 @@ using System.Text;
 
 namespace ProjectManager.DAL
 {
-    public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, int>
+    public class AppDbContext : IdentityDbContext<Employee, ApplicationRole, int>
     {
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
         {
         }
 
         public DbSet<Project> Projects { get; set; } = null!;
-        public DbSet<Employee> Employees { get; set; } = null!;
         public DbSet<ProjectEmployee> ProjectEmployees { get; set; } = null!;
         public DbSet<Entities.Task> Tasks { get; set; } = null!;
-
-        public DbSet<ProjectDocument> ProjectDocuments { get; set; }
+        public DbSet<ProjectDocument> ProjectDocuments { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
-
-            modelBuilder.Entity<Employee>()
-                .HasIndex(e => e.Email)
-                .IsUnique();
 
             // 1. Configure Many-to-Many (Project <-> Employee)
             modelBuilder.Entity<ProjectEmployee>()
@@ -51,7 +45,7 @@ namespace ProjectManager.DAL
                 .HasForeignKey(p => p.ProjectManagerId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // 3. Configure Task relationships (Avoid multiple cascade paths)
+            // 3. Configure Task relationships
             modelBuilder.Entity<Entities.Task>()
                 .HasOne(t => t.Project)
                 .WithMany(p => p.Tasks)
@@ -70,14 +64,7 @@ namespace ProjectManager.DAL
                 .HasForeignKey(t => t.AssigneeId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // 4. Configure ApplicationUser -> Employee (One-to-One)
-            modelBuilder.Entity<ApplicationUser>()
-                .HasOne(u => u.Employee)
-                .WithOne()
-                .HasForeignKey<ApplicationUser>(u => u.EmployeeId)
-                .OnDelete(DeleteBehavior.SetNull);
-
-            // 5. Configure Project -> ProjectDocument (One-to-Many)
+            // 4. Configure Project -> ProjectDocument
             modelBuilder.Entity<ProjectDocument>()
                 .HasOne(pd => pd.Project)
                 .WithMany(p => p.Documents)

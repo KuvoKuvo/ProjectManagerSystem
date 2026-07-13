@@ -18,9 +18,9 @@ namespace ProjectManager.API.Controllers
     {
         private readonly IProjectService _projectService;
         private readonly ILocalFileService _fileService;
-        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly UserManager<Employee> _userManager;
 
-        public ProjectsController(IProjectService projectService, ILocalFileService fileService, UserManager<ApplicationUser> userManager)
+        public ProjectsController(IProjectService projectService, ILocalFileService fileService, UserManager<Employee> userManager)
         {
             _projectService = projectService;
             _fileService = fileService;
@@ -33,7 +33,7 @@ namespace ProjectManager.API.Controllers
         public async Task<ActionResult<IEnumerable<ProjectDto>>> GetProjects([FromQuery] ProjectQueryParameters parameters)
         {
             var user = await _userManager.GetUserAsync(User);
-            int? currentEmployeeId = user?.EmployeeId;
+            int? currentEmployeeId = user?.Id;
             var userRole = User.FindFirstValue(ClaimTypes.Role);
 
             var projects = await _projectService.GetProjectsAsync(parameters, currentEmployeeId, userRole);

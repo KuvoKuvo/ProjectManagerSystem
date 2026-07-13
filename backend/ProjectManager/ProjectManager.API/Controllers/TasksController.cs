@@ -17,9 +17,9 @@ namespace ProjectManager.API.Controllers
     public class TasksController : ControllerBase
     {
         private readonly ITaskService _taskService;
-        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly UserManager<Employee> _userManager;
 
-        public TasksController(ITaskService taskService, UserManager<ApplicationUser> userManager)
+        public TasksController(ITaskService taskService, UserManager<Employee> userManager)
         {
             _taskService = taskService;
             _userManager = userManager;
@@ -31,7 +31,7 @@ namespace ProjectManager.API.Controllers
         public async Task<ActionResult<IEnumerable<TaskDto>>> GetTasks([FromQuery] TaskQueryParameters parameters)
         {
             var user = await _userManager.GetUserAsync(User);
-            int? currentEmployeeId = user?.EmployeeId;
+            int? currentEmployeeId = user?.Id;
             var userRole = User.FindFirstValue(ClaimTypes.Role);
 
             var tasks = await _taskService.GetTasksAsync(parameters, currentEmployeeId, userRole);

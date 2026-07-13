@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.AspNetCore.Identity;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Text;
@@ -6,33 +7,24 @@ using System.Text;
 namespace ProjectManager.DAL.Entities
 {
     /// <summary>
-    /// Represents a system employee or project participant.
+    /// Represents both the security identity and the physical employee in the system.
     /// </summary>
-    public class Employee
+    public class Employee : IdentityUser<int>
     {
-        public int Id { get; set; }
-
         [Required]
         [MaxLength(50)]
         public string FirstName { get; set; } = string.Empty;
 
         [Required]
         [MaxLength(50)]
-        public string LastName {  get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
 
         [MaxLength(50)]
-        public string MiddleName {  get; set; } = string.Empty;
-
-        [Required]
-        [EmailAddress]
-        [MaxLength(100)]
-        public string Email { get; set; } = string.Empty;
-
-        [Required]
-        public string PasswordHash { get; set; } = string.Empty;
+        public string MiddleName { get; set; } = string.Empty;
 
         [Required]
         public bool IsTemporaryPassword { get; set; } = true;
+
 
         public virtual ICollection<ProjectEmployee> ProjectEmployees { get; set; } = new List<ProjectEmployee>();
         public virtual ICollection<Project> ManagedProjects { get; set; } = new List<Project>();
