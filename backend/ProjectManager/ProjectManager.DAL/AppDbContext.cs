@@ -24,6 +24,10 @@ namespace ProjectManager.DAL
         {
             base.OnModelCreating(modelBuilder);
 
+            modelBuilder.Entity<Employee>()
+                .HasIndex(e => e.Email)
+                .IsUnique();
+
             // 1. Configure Many-to-Many (Project <-> Employee)
             modelBuilder.Entity<ProjectEmployee>()
                 .HasKey(pe => new { pe.ProjectId, pe.EmployeeId });

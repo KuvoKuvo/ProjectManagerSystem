@@ -54,6 +54,12 @@ namespace ProjectManager.BLL.Services.Employee
 
         public async Task<EmployeeCreatedResponseDto> CreateAsync(EmployeeCreateDto dto)
         {
+            var emailExists = await _context.Employees.AnyAsync(e => e.Email.ToLower() == dto.Email.ToLower());
+            if (emailExists)
+            {
+                throw new ArgumentException($"The employee with the Email '{dto.Email}' has already been registered.");
+            }
+
             string tempPassword = GenerateTemporaryPassword();
             var employee = _mapper.Map<DAL.Entities.Employee>(dto);
 

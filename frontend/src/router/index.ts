@@ -25,6 +25,12 @@ const router = createRouter({
         requiresAuth: true, 
         allowedRoles: ['Director', 'ProjectManager']
       }
+    },
+    {
+      path: '/employees/create',
+      name: 'create-employee',
+      component: () => import('@/views/CreateEmployeeView.vue'),
+      meta: { requiresAuth: true, roles: ['Director', 'Admin'] }
     }
   ],
 })
