@@ -20,8 +20,8 @@ namespace ProjectManager.Tests.Services
             int managerId = 10;
             int otherManagerId = 99;
 
-            var manager1 = new Employee { Id = managerId, FirstName = "Ivan", LastName = "Manager", Email = "m1@test.com", MiddleName = "Ivanovich" };
-            var manager2 = new Employee { Id = otherManagerId, FirstName = "Petr", LastName = "OtherManager", Email = "m2@test.com", MiddleName = "Petrovich" };
+            var manager1 = new Employee { Id = managerId, FirstName = "Ivan", LastName = "Manager", Email = "m1@test.com", MiddleName = "Ivanovich", PasswordHash = "hash1", IsTemporaryPassword = false };
+            var manager2 = new Employee { Id = otherManagerId, FirstName = "Petr", LastName = "OtherManager", Email = "m2@test.com", MiddleName = "Petrovich", PasswordHash = "hash2", IsTemporaryPassword = false };
 
             context.Employees.AddRange(manager1, manager2);
             await context.SaveChangesAsync();
