@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using ProjectManager.BLL.DTOs.Employee;
 using ProjectManager.DAL;
 using ProjectManager.DAL.Entities;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace ProjectManager.BLL.Services.Employee
 {
@@ -50,13 +52,22 @@ namespace ProjectManager.BLL.Services.Employee
             return _mapper.Map<IEnumerable<EmployeeDto>>(filtredEmployees);
         }
 
-        public async Task<EmployeeDto> CreateAsync(EmployeeCreateDto dto)
+        public async Task<EmployeeCreatedResponseDto> CreateAsync(EmployeeCreateDto dto)
         {
+            string tempPassword = GenerateTemporaryPassword();
             var employee = _mapper.Map<DAL.Entities.Employee>(dto);
+
+            employee.PasswordHash = HashPassword(tempPassword);
+            employee.IsTemporaryPassword = true;
+
             _context.Employees.Add(employee);
             await _context.SaveChangesAsync();
 
-            return  _mapper.Map<EmployeeDto>(employee);
+            return new EmployeeCreatedResponseDto
+            {
+                Employee = _mapper.Map<EmployeeDto>(employee),
+                TemporaryPassword = tempPassword
+            };
         }
 
         public async System.Threading.Tasks.Task UpdateAsync(EmployeeUpdateDto dto)
@@ -79,6 +90,20 @@ namespace ProjectManager.BLL.Services.Employee
                 _context.Employees.Remove(employee);
                 await _context.SaveChangesAsync();
             }
-        }       
+        }
+
+        private string GenerateTemporaryPassword()
+        {
+            const string validChars = "ABCDEFGHJKLMNOPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz0123456789!@#$%^*";
+            var random = new Random();
+            return new string(Enumerable.Repeat(validChars, 10)
+                .Select(s => s[random.Next(s.Length)]).ToArray());
+        }
+
+        private string HashPassword(string password)
+        {
+            byte[] bytes = SHA256.HashData(Encoding.UTF8.GetBytes(password));
+            return Convert.ToBase64String(bytes);
+        }
     }
 }

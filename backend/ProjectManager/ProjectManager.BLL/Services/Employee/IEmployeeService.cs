@@ -10,7 +10,7 @@ namespace ProjectManager.BLL.Services.Employee
         Task<IEnumerable<EmployeeDto>> GetAllAsync();
         Task<EmployeeDto?> GetByIdAsync(int id);
         Task<IEnumerable<EmployeeDto>> SearchAsync(string searchTrim);
-        Task<EmployeeDto> CreateAsync(EmployeeCreateDto dto);
+        Task<EmployeeCreatedResponseDto> CreateAsync(EmployeeCreateDto dto);
         System.Threading.Tasks.Task UpdateAsync(EmployeeUpdateDto dto);
         System.Threading.Tasks.Task DeleteAsync(int id);
     }
