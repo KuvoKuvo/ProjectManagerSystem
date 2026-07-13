@@ -43,7 +43,7 @@ const fetchEmployees = async (term: string) => {
     }
     try{
         isSearching.value = true
-        const response = await api.get(`/api/Employees/search?=${encodeURIComponent(term)}`)
+        const response = await api.get(`/api/Employees/search?term=${encodeURIComponent(term)}`)
         searchResult.value = response.data
     }
     catch (err){
