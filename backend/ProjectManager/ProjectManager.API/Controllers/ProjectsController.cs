@@ -28,14 +28,26 @@ namespace ProjectManager.API.Controllers
             _userManager = userManager;
         }
 
-        // GET: api/projects?startDateFrom=2026-01-01&priority=2&sortBy=startDate&isDescending=true
-        // Requirements check: Advanced dynamic filtering and sorting for project tables
+        // GET: api/projects
         [HttpGet]
         public async Task<ActionResult<IEnumerable<ProjectDto>>> GetProjects([FromQuery] ProjectQueryParameters parameters)
         {
             var user = await _userManager.GetUserAsync(User);
-            int? currentEmployeeId = user?.Id;
-            var userRole = User.FindFirstValue(ClaimTypes.Role);
+            if (user == null)
+            {
+                return Challenge();
+            }
+
+            int currentEmployeeId = user.Id;
+            string userRole = "Employee";
+            if (User.IsInRole("Director"))
+            {
+                userRole = "Director";
+            }
+            else if (User.IsInRole("ProjectManager"))
+            {
+                userRole = "ProjectManager";
+            }
 
             var projects = await _projectService.GetProjectsAsync(parameters, currentEmployeeId, userRole);
             return Ok(projects);
@@ -121,6 +133,23 @@ namespace ProjectManager.API.Controllers
         [Authorize(Roles = "Director,ProjectManager")]
         public async Task<IActionResult> AssignEmployee(int id, int employeeId)
         {
+
+            var project = await _projectService.GetByIdAsync(id);
+            if (project == null)
+            {
+                return NotFound(new { Message = $"Project with ID {id} not found." });
+            }
+
+            var user = await _userManager.GetUserAsync(User);
+            var isDirector = User.IsInRole("Director");
+            var isAssignedPM = project.ProjectManagerId == user?.Id;
+
+            if (!isDirector && !isAssignedPM)
+            {
+                return StatusCode(403, new { Message = "You are not the manager of this project." });
+            }
+
+
             try
             {
                 await _projectService.AssignEmployeeAsync(id, employeeId);
@@ -138,6 +167,22 @@ namespace ProjectManager.API.Controllers
         [Authorize(Roles = "Director,ProjectManager")]
         public async Task<IActionResult> RemoveEmployee(int id, int employeeId)
         {
+
+            var project = await _projectService.GetByIdAsync(id);
+            if (project == null)
+            {
+                return NotFound(new { Message = $"Project with ID {id} not found." });
+            }
+
+            var user = await _userManager.GetUserAsync(User);
+            var isDirector = User.IsInRole("Director");
+            var isAssignedPM = project.ProjectManagerId == user?.Id;
+
+            if (!isDirector && !isAssignedPM)
+            {
+                return StatusCode(403, new { Message = "You are not the manager of this project." });
+            }
+
             try
             {
                 await _projectService.RemoveEmployeeAsync(id, employeeId);
@@ -157,6 +202,21 @@ namespace ProjectManager.API.Controllers
             if (file == null || file.Length == 0)
             {
                 return BadRequest(new { Message = "No file uploaded." });
+            }
+
+            var project = await _projectService.GetByIdAsync(id);
+            if (project == null)
+            {
+                return NotFound(new { Message = $"Project with ID {id} not found." });
+            }
+
+            var user = await _userManager.GetUserAsync(User);
+            var isDirector = User.IsInRole("Director");
+            var isAssignedPM = project.ProjectManagerId == user?.Id;
+
+            if (!isDirector && !isAssignedPM)
+            {
+                return StatusCode(403, new { Message = "You are not the manager of this project." });
             }
 
             try

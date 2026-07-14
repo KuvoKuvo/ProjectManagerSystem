@@ -29,18 +29,17 @@ namespace ProjectManager.BLL.Services.Project
         {
             var query = _context.Projects.Include(p => p.ProjectManager).AsQueryable();
 
-            //Role-based security filter
-            if (!string.IsNullOrEmpty(userRole) && currUserId.HasValue)
+            // Role-based security filter (Senior-style rewrite)
+            if (currUserId.HasValue)
             {
-                if(userRole == "ProjectManager")
+                var normalizedRole = userRole?.Trim().ToLower();
+
+                if (normalizedRole != "director")
                 {
-                    query = query.Where(p => p.ProjectManagerId == currUserId.Value ||
-                        p.ProjectEmployees.Any(pe => pe.EmployeeId == currUserId.Value));
-                }
-                else if (userRole == "Employee")
-                {
-                    query = query.Where(p => p.ProjectEmployees.Any(pe =>
-                        pe.EmployeeId == currUserId.Value));
+                    query = query.Where(p =>
+                        p.ProjectManagerId == currUserId.Value ||
+                        p.ProjectEmployees.Any(pe => pe.EmployeeId == currUserId.Value)
+                    );
                 }
             }
 
@@ -48,13 +47,13 @@ namespace ProjectManager.BLL.Services.Project
             if (parameters.StartDateTo.HasValue)
                 query = query.Where(p => p.StartDate <= parameters.StartDateTo.Value);
 
-            if(parameters.StartDateFrom.HasValue)
+            if (parameters.StartDateFrom.HasValue)
                 query = query.Where(p => p.StartDate >= parameters.StartDateFrom.Value);
 
             if (parameters.Priority.HasValue)
                 query = query.Where(p => p.Priority == parameters.Priority.Value);
 
-            // Dynamic Sorting using modern C# switch expression
+            // Dynamic Sorting
             query = parameters.SortBy.ToLower() switch
             {
                 "startdate" => parameters.IsDescending ? query.OrderByDescending(p => p.StartDate) : query.OrderBy(p => p.StartDate),

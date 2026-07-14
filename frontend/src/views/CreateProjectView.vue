@@ -247,7 +247,7 @@ const submitProject = async () => {
           <h2 class="text-xl font-bold text-slate-800 border-b border-slate-100 pb-2">Step 1: Basic Information</h2>
           <div>
             <label class="block text-sm font-semibold text-slate-700 mb-1">Project name *</label>
-            <input v-model="wizardData.name" type="text" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500" placeholder="Внедрение ERP системы" />
+            <input v-model="wizardData.name" type="text" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"/>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -272,11 +272,11 @@ const submitProject = async () => {
           <h2 class="text-xl font-bold text-slate-800 border-b border-slate-100 pb-2">Step 2: Counterparties</h2>
           <div>
             <label class="block text-sm font-semibold text-slate-700 mb-1">The customer company *</label>
-            <input v-model="wizardData.customerCompany" type="text" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:border-emerald-500 focus:outline-none" placeholder="ООО Газпром Сбыт" />
+            <input v-model="wizardData.customerCompany" type="text" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:border-emerald-500 focus:outline-none"/>
           </div>
           <div>
             <label class="block text-sm font-semibold text-slate-700 mb-1">The executing company *</label>
-            <input v-model="wizardData.executorCompany" type="text" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:border-emerald-500 focus:outline-none" placeholder="ПАО Иннотех Софт" />
+            <input v-model="wizardData.executorCompany" type="text" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:border-emerald-500 focus:outline-none"/>
           </div>
         </div>
 
@@ -293,7 +293,7 @@ const submitProject = async () => {
 
           <div v-else class="relative">
             <label class="block text-sm font-semibold text-slate-700 mb-1">Employee search by full name *</label>
-            <input v-model="searchQuery" type="text" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:border-emerald-500 focus:outline-none" placeholder="Start typing, for example: Ivanov..." />
+            <input v-model="searchQuery" type="text" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:border-emerald-500 focus:outline-none" />
             
             <div v-if="isSearching" class="absolute z-10 w-full bg-white border border-slate-200 rounded-xl mt-1 p-4 shadow-lg text-sm text-slate-500">
               🔍 Looking for employees on the server...
@@ -329,7 +329,7 @@ const submitProject = async () => {
 
           <div class="relative">
             <label class="block text-sm font-semibold text-slate-700 mb-1">Search and add participants</label>
-            <input v-model="searchQuery" type="text" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:border-emerald-500 focus:outline-none" placeholder="Enter the employee's name..." />
+            <input v-model="searchQuery" type="text" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:border-emerald-500 focus:outline-none" />
             
             <div v-if="isSearching" class="absolute z-10 w-full bg-white border border-slate-200 rounded-xl mt-1 p-4 shadow-lg text-sm text-slate-500">
               🔍 Backend database search...

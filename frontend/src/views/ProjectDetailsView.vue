@@ -30,7 +30,13 @@ const newTask = ref({
 })
 
 const isManagerOrDirector = computed(() => {
-  return authStore.isProjectManager || authStore.isDirector
+  if (authStore.isDirector) return true
+  
+  if (authStore.isProjectManager) {
+    return project.value?.projectManagerId === authStore.user?.id
+  }
+  
+  return false
 })
 
 const fetchProjectDetails = async () => {
