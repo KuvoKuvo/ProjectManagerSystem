@@ -125,5 +125,14 @@ namespace ProjectManager.API.Controllers
                 return StatusCode(500, new { Message = "An error occurred while deleting the employee.", Detail = ex.Message });
             }
         }
+
+        // GET: api/employees/managers
+        // Requirements check: Returns only users who are eligible to be assigned as a Project Manager
+        [HttpGet("managers")]
+        public async Task<ActionResult<IEnumerable<EmployeeDto>>> GetEligibleManagers()
+        {
+            var managers = await _employeeService.GetEligibleManagersAsync();
+            return Ok(managers);
+        }
     }
 }

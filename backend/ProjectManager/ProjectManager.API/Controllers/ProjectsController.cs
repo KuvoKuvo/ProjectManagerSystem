@@ -88,7 +88,7 @@ namespace ProjectManager.API.Controllers
         // PUT: api/projects/{id}
         // Requirements check: Updates general data and synchronizes delta for assigned employees
         [HttpPut("{id:int}")]
-        [Authorize(Roles = "Director")]
+        [Authorize(Roles = "Director,ProjectManager")]
         public async Task<IActionResult> Update(int id, [FromBody] ProjectUpdateDto dto)
         {
             if(id != dto.Id)
@@ -99,6 +99,21 @@ namespace ProjectManager.API.Controllers
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
+            }
+
+            var project = await _projectService.GetByIdAsync(id);
+            if (project == null)
+            {
+                return NotFound(new { Message = $"Project with ID {id} not found." });
+            }
+
+            var user = await _userManager.GetUserAsync(User);
+            var isDirector = User.IsInRole("Director");
+            var isAssignedPM = project.ProjectManagerId == user?.Id;
+
+            if (!isDirector && !isAssignedPM)
+            {
+                return StatusCode(403, new { Message = "Only the assigned Project Manager or Director can edit this project." });
             }
 
             try

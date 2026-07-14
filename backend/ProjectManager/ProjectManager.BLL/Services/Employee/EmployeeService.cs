@@ -164,5 +164,18 @@ namespace ProjectManager.BLL.Services.Employee
             return new string(Enumerable.Repeat(validChars, 10)
                 .Select(s => s[random.Next(s.Length)]).ToArray());
         }
+
+        public async Task<IEnumerable<EmployeeDto>> GetEligibleManagersAsync()
+        {
+            var pms = await _userManager.GetUsersInRoleAsync("ProjectManager");
+            var directors = await _userManager.GetUsersInRoleAsync("Director");
+
+            var allManagers = pms.Concat(directors)
+                .GroupBy(u => u.Id)
+                .Select(g => g.First())
+                .ToList();
+
+            return _mapper.Map<IEnumerable<EmployeeDto>>(allManagers);
+        }
     }
 }

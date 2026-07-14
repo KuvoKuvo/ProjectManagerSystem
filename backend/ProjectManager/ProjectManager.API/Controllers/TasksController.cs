@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using ProjectManager.BLL.DTOs.Task;
 using ProjectManager.BLL.Models;
 using ProjectManager.BLL.Services;
+using ProjectManager.BLL.Services.Project;
 using ProjectManager.BLL.Services.Task;
 using ProjectManager.DAL.Entities;
 using System.Security.Claims;
@@ -17,11 +18,13 @@ namespace ProjectManager.API.Controllers
     public class TasksController : ControllerBase
     {
         private readonly ITaskService _taskService;
+        private readonly IProjectService _projectService;
         private readonly UserManager<Employee> _userManager;
 
-        public TasksController(ITaskService taskService, UserManager<Employee> userManager)
+        public TasksController(ITaskService taskService, IProjectService projectService, UserManager<Employee> userManager)
         {
             _taskService = taskService;
+            _projectService = projectService;
             _userManager = userManager;
         }
 
@@ -31,8 +34,13 @@ namespace ProjectManager.API.Controllers
         public async Task<ActionResult<IEnumerable<TaskDto>>> GetTasks([FromQuery] TaskQueryParameters parameters)
         {
             var user = await _userManager.GetUserAsync(User);
-            int? currentEmployeeId = user?.Id;
-            var userRole = User.FindFirstValue(ClaimTypes.Role);
+            if (user == null) return Challenge();
+
+            int currentEmployeeId = user.Id;
+
+            string userRole = "Employee";
+            if (User.IsInRole("Director")) userRole = "Director";
+            else if (User.IsInRole("ProjectManager")) userRole = "ProjectManager";
 
             var tasks = await _taskService.GetTasksAsync(parameters, currentEmployeeId, userRole);
             return Ok(tasks);
@@ -55,9 +63,21 @@ namespace ProjectManager.API.Controllers
         [Authorize(Roles = "Director,ProjectManager")]
         public async Task<ActionResult<TaskDto>> Create([FromBody] TaskCreateDto dto)
         {
-            if (!ModelState.IsValid)
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
+            var project = await _projectService.GetByIdAsync(dto.ProjectId);
+            if (project == null)
             {
-                return BadRequest(ModelState);
+                return BadRequest(new { Message = $"Target Project with ID {dto.ProjectId} does not exist." });
+            }
+
+            var user = await _userManager.GetUserAsync(User);
+            var isDirector = User.IsInRole("Director");
+            var isAssignedPM = project.ProjectManagerId == user?.Id;
+
+            if (!isDirector && !isAssignedPM)
+            {
+                return StatusCode(403, new { Message = "Only the assigned Project Manager of this project or a Director can create tasks." });
             }
 
             var createdTask = await _taskService.CreateAsync(dto);
@@ -70,14 +90,23 @@ namespace ProjectManager.API.Controllers
         [Authorize(Roles = "Director,ProjectManager")]
         public async Task<IActionResult> Update(int id, [FromBody] TaskUpdateDto dto)
         {
-            if (id != dto.Id)
+            if (id != dto.Id) return BadRequest(new { Message = "Route ID does not match Body ID." });
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
+            var task = await _taskService.GetByIdAsync(id);
+            if (task == null)
             {
-                return BadRequest(new { Message = "Route ID does not match Body ID." });
+                return NotFound(new { Message = $"Task with ID {id} not found." });
             }
 
-            if (!ModelState.IsValid)
+            var project = await _projectService.GetByIdAsync(task.ProjectId);
+            var user = await _userManager.GetUserAsync(User);
+            var isDirector = User.IsInRole("Director");
+            var isAssignedPM = project?.ProjectManagerId == user?.Id;
+
+            if (!isDirector && !isAssignedPM)
             {
-                return BadRequest(ModelState);
+                return StatusCode(403, new { Message = "You cannot modify tasks in this project." });
             }
 
             try
@@ -102,6 +131,16 @@ namespace ProjectManager.API.Controllers
                 return NotFound(new { Message = $"Task with ID {id} not found." });
             }
 
+            var project = await _projectService.GetByIdAsync(task.ProjectId);
+            var user = await _userManager.GetUserAsync(User);
+            var isDirector = User.IsInRole("Director");
+            var isAssignedPM = project?.ProjectManagerId == user?.Id;
+
+            if (!isDirector && !isAssignedPM)
+            {
+                return StatusCode(403, new { Message = "You cannot delete tasks in this project." });
+            }
+
             await _taskService.DeleteAsync(id);
             return NoContent();
         }
@@ -112,6 +151,25 @@ namespace ProjectManager.API.Controllers
         [Authorize]
         public async Task<IActionResult> UpdateStatus(int id, [FromBody] ProjectManager.DAL.Entities.TaskStatus status)
         {
+            var task = await _taskService.GetByIdAsync(id);
+            if (task == null)
+            {
+                return NotFound(new { Message = $"Task with ID {id} not found." });
+            }
+
+            var user = await _userManager.GetUserAsync(User);
+            var isDirector = User.IsInRole("Director");
+
+            var project = await _projectService.GetByIdAsync(task.ProjectId);
+            var isAssignedPM = project?.ProjectManagerId == user?.Id;
+
+            var isAssignee = task.AssigneeId == user?.Id;
+
+            if (!isDirector && !isAssignedPM && !isAssignee)
+            {
+                return StatusCode(403, new { Message = "You can only update status of tasks assigned to you." });
+            }
+
             try
             {
                 await _taskService.UpdateStatusAsync(id, status);
@@ -129,6 +187,22 @@ namespace ProjectManager.API.Controllers
         [Authorize(Roles = "Director,ProjectManager")]
         public async Task<IActionResult> ChangeAssignee(int id, [FromBody] int assigneeId)
         {
+            var task = await _taskService.GetByIdAsync(id);
+            if (task == null)
+            {
+                return NotFound(new { Message = $"Task with ID {id} not found." });
+            }
+
+            var project = await _projectService.GetByIdAsync(task.ProjectId);
+            var user = await _userManager.GetUserAsync(User);
+            var isDirector = User.IsInRole("Director");
+            var isAssignedPM = project?.ProjectManagerId == user?.Id;
+
+            if (!isDirector && !isAssignedPM)
+            {
+                return StatusCode(403, new { Message = "You cannot reassign tasks in this project." });
+            }
+
             try
             {
                 await _taskService.ChangeAssigneeAsync(id, assigneeId);

@@ -13,7 +13,7 @@ namespace ProjectManager.BLL.DTOs.Task
         public string Name { get; set; } = string.Empty;
         public string Comment { get; set; } = string.Empty;
         public int Priority { get; set; }
-        public TaskStatus Status { get; set; }
+        public DAL.Entities.TaskStatus Status { get; set; }
         public int ProjectId { get; set; }
         public string ProjectName { get; set; } = string.Empty;
         public int AuthorId { get; set; }

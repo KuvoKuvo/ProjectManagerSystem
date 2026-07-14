@@ -14,12 +14,28 @@ const projectId = Number(route.params.id)
 const isLoading = ref(true)
 const isUploading = ref(false)
 const isSavingTask = ref(false)
+const isSavingProject = ref(false)
 const errorMessage = ref('')
 const project = ref<any>(null)
 const tasks = ref<any[]>([])
+const allManagers = ref<any[]>([])
+const allEmployees = ref<any[]>([])
 
 const showCreateTaskModal = ref(false)
+const showEditProjectModal = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
+
+const editForm = ref({
+  id: 0,
+  name: '',
+  customerCompany: '',
+  executorCompany: '',
+  startDate: '',
+  endDate: '',
+  priority: 3,
+  projectManagerId: 0,
+  employeeIds: [] as number[]
+})
 
 const newTask = ref({
   name: '',
@@ -49,6 +65,39 @@ const fetchProjectTasks = async () => {
   tasks.value = response.data
 }
 
+const fetchManagers = async () => {
+  if (authStore.isDirector){
+    try{
+      const response = await api.get('/api/employees/managers')
+      allManagers.value = response.data
+    }
+    catch (err){
+      console.error('Failed to load managers list:', err)
+    }
+  }
+}
+
+const addEmployeeToProject = (empId: number) => {
+  if (!empId) return
+  if (!editForm.value.employeeIds.includes(empId)) {
+    editForm.value.employeeIds.push(empId)
+  }
+}
+
+const removeEmployeeFromProject = (empId: number) => {
+  editForm.value.employeeIds = editForm.value.employeeIds.filter(id => id !== empId)
+}
+
+const fetchEmployees = async () => {
+  try {
+    const response = await api.get('/api/employees') 
+    allEmployees.value = response.data
+  }
+  catch (err) {
+    console.error('Failed to load employees list:', err)
+  }
+}
+
 const loadAllPageData = async () => {
   try {
     isLoading.value = true
@@ -65,6 +114,51 @@ const loadAllPageData = async () => {
   } 
   finally {
     isLoading.value = false
+  }
+}
+
+const openEditModal = async () => {
+  if (!project.value) return
+
+  if (authStore.isDirector) {
+    await fetchManagers()
+  }
+  await fetchEmployees()
+  
+  editForm.value = {
+    id: project.value.id,
+    name: project.value.name,
+    customerCompany: project.value.customerCompany,
+    executorCompany: project.value.executorCompany,
+    startDate: project.value.startDate ? project.value.startDate.split('T')[0] : '',
+    endDate: project.value.endDate ? project.value.endDate.split('T')[0] : '',
+    priority: project.value.priority,
+    projectManagerId: project.value.projectManagerId,
+    employeeIds: project.value.assignedEmployees?.map((e: any) => e.id) || []
+  }
+  showEditProjectModal.value = true
+}
+
+const handleUpdateProject = async () => {
+  if (!editForm.value.name.trim() || !editForm.value.customerCompany.trim() || !editForm.value.executorCompany.trim() || !editForm.value.startDate) {
+    alert('Please fill out all required fields.')
+    return
+  }
+  try{
+    isSavingProject.value = true
+    const payload = {
+      ...editForm.value,
+    }
+    await api.put(`/api/projects/${projectId}`, payload)
+    showEditProjectModal.value = false
+    await fetchProjectDetails()
+  }
+  catch(err: any){
+    console.error('Failed to update project:', err)
+    alert(err.response?.data?.message || 'Failed to update baseline project information.')
+  }
+  finally{
+    isSavingProject.value = false
   }
 }
 
@@ -269,6 +363,13 @@ onMounted(() => {
                 </span>
                 <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">{{ project.name }}</h1>
               </div>
+              <button 
+                v-if="isManagerOrDirector"
+                @click="openEditModal"
+                class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer flex items-center gap-1.5 h-fit self-end md:self-center"
+              >
+                <span>✏️ Edit Project</span>
+              </button>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -568,6 +669,165 @@ onMounted(() => {
           class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl cursor-pointer disabled:opacity-50"
         >
           {{ isSavingTask ? 'Saving...' : 'Create' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div v-if="showEditProjectModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl space-y-4 overflow-y-auto max-h-[90vh]">
+      <h3 class="text-lg font-bold text-slate-900">Edit Baseline Information</h3>
+      
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Project Name *</label>
+          <input 
+            v-model="editForm.name" 
+            type="text" 
+            class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-sm outline-none focus:border-slate-400"
+          />
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Customer Company *</label>
+            <input 
+              v-model="editForm.customerCompany" 
+              type="text" 
+              class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-sm outline-none focus:border-slate-400"
+            />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Executing Company *</label>
+            <input 
+              v-model="editForm.executorCompany" 
+              type="text" 
+              class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-sm outline-none focus:border-slate-400"
+            />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Start Date *</label>
+            <input 
+              v-model="editForm.startDate" 
+              type="date" 
+              class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-sm outline-none focus:border-slate-400"
+            />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">End Date</label>
+            <input 
+              v-model="editForm.endDate" 
+              type="date" 
+              class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-sm outline-none focus:border-slate-400"
+            />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Priority</label>
+            <select 
+              v-model="editForm.priority"
+              class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-sm outline-none focus:border-slate-400"
+            >
+              <option :value="1">1 (Low)</option>
+              <option :value="2">2</option>
+              <option :value="3">3 (Medium)</option>
+              <option :value="4">4</option>
+              <option :value="5">5 (High)</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Project Manager</label>
+            <select 
+              v-model="editForm.projectManagerId"
+              :disabled="!authStore.isDirector"
+              class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-sm outline-none focus:border-slate-400 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed font-medium"
+            >
+              <option v-if="!authStore.isDirector" :value="editForm.projectManagerId">
+                {{ project?.projectManager?.fullName || 'Assigned Manager' }}
+              </option>
+              
+              <option v-for="mgr in allManagers" :key="mgr.id" :value="mgr.id">
+                {{ mgr.fullName }}
+              </option>
+            </select>
+            <p v-if="!authStore.isDirector" class="text-[10px] text-slate-400 mt-1">
+              * Only a Director can reassign the Project Manager.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="border-t border-slate-100 pt-4 space-y-3">
+        <label class="block text-xs font-bold text-slate-500 uppercase">Project Executors (Team)</label>  
+        <div class="flex gap-2">
+          <select 
+            @change="addEmployeeToProject(Number(($event.target as HTMLSelectElement).value)); ($event.target as HTMLSelectElement).value = ''"
+            class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-sm outline-none focus:border-slate-400"
+          >
+            <option value="" disabled selected>Select an employee to add...</option>
+            <option 
+              v-for="emp in allEmployees" 
+              :key="emp.id" 
+              :value="emp.id"
+              :disabled="editForm.employeeIds.includes(emp.id)"
+            >
+              {{ emp.fullName }} ({{ emp.email }})
+            </option>
+          </select>
+        </div>
+
+        <div v-if="editForm.employeeIds.length > 0" class="space-y-2 max-h-48 overflow-y-auto border border-slate-100 rounded-xl p-2 bg-slate-50/50">
+          <div 
+            v-for="empId in editForm.employeeIds" 
+            :key="empId"
+            class="flex items-center justify-between bg-white px-3 py-2 rounded-lg border border-slate-200/60 text-xs"
+          >
+            <div class="flex items-center gap-2">
+              <span class="text-sm">👤</span>
+              <div>
+                <p class="font-bold text-slate-800">
+                  {{ allEmployees.find(e => e.id === empId)?.fullName || 'Loading...' }}
+                </p>
+                <p class="text-[10px] text-slate-400">
+                  {{ allEmployees.find(e => e.id === empId)?.email }}
+                </p>
+              </div>
+            </div>
+            <button 
+              type="button"
+              @click="removeEmployeeFromProject(empId)"
+              class="text-xs text-red-500 hover:text-red-700 font-bold px-2 py-1 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+              title="Remove from project"
+            >
+              Remove
+            </button>
+          </div>
+        </div>
+          
+        <div v-else class="text-center py-6 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+          <p class="text-xs text-slate-400">No executors assigned to this project yet.</p>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-3 pt-2 border-t border-slate-100">
+        <button 
+          @click="showEditProjectModal = false"
+          class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl cursor-pointer"
+        >
+          Cancel
+        </button>
+        <button 
+          @click="handleUpdateProject"
+          :disabled="isSavingProject"
+          class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl cursor-pointer disabled:opacity-50"
+        >
+          {{ isSavingProject ? 'Saving...' : 'Save Changes' }}
         </button>
       </div>
     </div>
