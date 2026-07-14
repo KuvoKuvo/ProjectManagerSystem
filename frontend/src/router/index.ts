@@ -36,7 +36,7 @@ const router = createRouter({
     {
       path: '/employees/create',
       name: 'create-employee',
-      component: () => import('@/views/CreateEmployeeView.vue'),
+      component: () => import('@/views/EmployeesManagementView.vue'),
       meta: { requiresAuth: true, requiresRealPassword: true, allowedRoles: ['Director'] }
     },
     {
