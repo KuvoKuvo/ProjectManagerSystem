@@ -290,7 +290,7 @@ onMounted(() => {
                 <td class="px-6 py-4 text-right">
                   <div class="flex items-center justify-end gap-2">
                     <router-link 
-                      :to="{ name: 'dashboard' }" 
+                      :to="{ name: 'project-details', params: { id: project.id } }" 
                       class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors cursor-pointer"
                     >
                       Open

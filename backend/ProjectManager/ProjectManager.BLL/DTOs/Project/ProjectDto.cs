@@ -22,7 +22,8 @@ namespace ProjectManager.BLL.DTOs.Project
     }
     public class ProjectDetailsDto : ProjectDto
     {
-        // Includes the list of assigned employees for the wizard step 4 and details view
+        public EmployeeDto ProjectManager { get; set; } = null!;
         public List<EmployeeDto> AssignedEmployees { get; set; } = new();
+        public List<ProjectDocumentDto> Documents { get; set; } = new();
     }
 }

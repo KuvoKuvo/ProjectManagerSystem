@@ -15,6 +15,8 @@ namespace ProjectManager.BLL.Mapping
             CreateMap<EmployeeCreateDto, Employee>();
             CreateMap<EmployeeUpdateDto, Employee>();
 
+            CreateMap<ProjectDocument, ProjectDocumentDto>();
+
             // Project mappings
             CreateMap<Project, ProjectDto>()
                 .ForMember(dest => dest.ProjectManagerFullName,
@@ -26,8 +28,15 @@ namespace ProjectManager.BLL.Mapping
             CreateMap<Project, ProjectDetailsDto>()
                 .ForMember(dest => dest.ProjectManagerFullName,
                 opt => opt.MapFrom(src => $"{src.ProjectManager.LastName} {src.ProjectManager.FirstName}".Trim()))
+
+                .ForMember(dest => dest.ProjectManager,
+                opt => opt.MapFrom(src => src.ProjectManager))
+
                 .ForMember(dest => dest.AssignedEmployees,
-                opt => opt.MapFrom(src => src.ProjectEmployees.Select(pe => pe.Employee)));
+                opt => opt.MapFrom(src => src.ProjectEmployees.Select(pe => pe.Employee)))
+
+                .ForMember(dest => dest.Documents,
+                opt => opt.MapFrom(src => src.Documents));
 
             CreateMap<ProjectUpdateDto, Project>()
                 .ForMember(dest => dest.ProjectEmployees, opt => opt.Ignore());

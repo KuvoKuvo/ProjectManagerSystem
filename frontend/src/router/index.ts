@@ -37,8 +37,13 @@ const router = createRouter({
       path: '/employees/create',
       name: 'create-employee',
       component: () => import('@/views/CreateEmployeeView.vue'),
-      // SENIOR FIX: Changed 'Admin' to 'Director' to match backend roles architecture
       meta: { requiresAuth: true, requiresRealPassword: true, allowedRoles: ['Director'] }
+    },
+    {
+      path: '/projects/:id',
+      name: 'project-details',
+      component: () => import('@/views/ProjectDetailsView.vue'),
+      meta: { requiresAuth: true, requiresRealPassword: true }
     }
   ],
 })

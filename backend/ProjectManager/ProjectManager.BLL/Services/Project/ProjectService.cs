@@ -72,6 +72,7 @@ namespace ProjectManager.BLL.Services.Project
                 .Include(p => p.ProjectManager)
                 .Include(p => p.ProjectEmployees)
                     .ThenInclude(pe => pe.Employee)
+                .Include(p => p.Documents)
                 .FirstOrDefaultAsync(p => p.Id == id);
 
             return _mapper.Map<ProjectDetailsDto>(projects);
