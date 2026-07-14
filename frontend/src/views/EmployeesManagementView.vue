@@ -65,7 +65,7 @@ const startEdit = (emp: any) => {
     form.lastName = emp.lastName
     form.middleName = emp.middleName || ''
     form.email = emp.email
-    form.role = 'Employee'
+    form.role = emp.role || 'Employee'
 }
 
 const cancelEdit = () => {
@@ -96,8 +96,9 @@ const handleSubmit = async () => {
                 firstName: form.firstName,
                 lastName: form.lastName,
                 middleName: form.middleName,
-                email: form.email
-            })
+                email: form.email,
+                role: form.role
+            })        
 
             successMessage.value = `Employee "${form.lastName} ${form.firstName}" was successfully updated!`
             isEditMode.value = false
@@ -330,7 +331,7 @@ onMounted(() => {
                 <input v-model="form.email" type="email" required class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none bg-slate-50" />
               </div>
 
-              <div v-if="!isEditMode">
+              <div>
                 <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">System Role *</label>
                 <select v-model="form.role" required class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none bg-slate-50">
                   <option value="Employee">Employee</option>
