@@ -204,5 +204,20 @@ namespace ProjectManager.BLL.Services.Project
             };
         }
 
+        public async Task<ProjectDocumentDto?> GetDocumentByIdAsync(int documentId)
+        {
+            var document = await _context.ProjectDocuments
+                .FirstOrDefaultAsync(d => d.Id == documentId);
+
+            if (document == null) return null;
+
+            return new ProjectDocumentDto
+            { 
+                Id = document.Id,
+                FileName = document.FileName,
+                FilePath = document.FilePath
+            };
+        }
+
     }
 }

@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.StaticFiles;
 using ProjectManager.API.Services;
 using ProjectManager.BLL.DTOs.Project;
 using ProjectManager.BLL.Models;
@@ -169,6 +170,32 @@ namespace ProjectManager.API.Controllers
             {
                 return NotFound(new { Message = ex.Message });
             }
+        }
+
+
+        [HttpGet("{id:int}/documents/{documentId:int}")]
+        [Authorize]
+        public async Task<IActionResult> DownloadDocument(int id, int documentId)
+        {
+            var document = await _projectService.GetDocumentByIdAsync(documentId);
+            if (document == null)
+            {
+                return NotFound(new { Message = $"Document with ID {documentId} not found." });
+            }
+
+            var physicalPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", document.FilePath.TrimStart('/'));
+            if (!System.IO.File.Exists(physicalPath))
+            {
+                return NotFound(new { Message = "Physical file not found on the server." });
+            }
+
+            var provider = new FileExtensionContentTypeProvider();
+            if (!provider.TryGetContentType(physicalPath, out var contentType))
+            {
+                contentType = "application/octet-stream";
+            }
+            var fileBytes = await System.IO.File.ReadAllBytesAsync(physicalPath);
+            return File(fileBytes, contentType, document.FileName);
         }
     }
 }
