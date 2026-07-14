@@ -1,10 +1,12 @@
 <script setup lang="ts">
 
 import { ref, reactive, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/api/axios'
 
 const authStore = useAuthStore()
+const router = useRouter()
 
 const isLoading = ref(false)
 const errorMessage = ref('')
@@ -22,6 +24,20 @@ const filters = reactive({
   sortBy: 'Name',
   isDescending: false
 })
+
+const handleLogout = async () => {
+  try {
+    isLoading.value = true
+    await authStore.logout()
+    router.push({ name: 'login' })
+  } 
+  catch (err) {
+    console.error('Logout failed:', err)
+  } 
+  finally {
+    isLoading.value = false
+  }
+}
 
 const fetchProjects = async() => {
   try{
@@ -134,7 +150,7 @@ onMounted(() => {
           </router-link>
 
           <button 
-            @click="authStore.logout()" 
+            @click="handleLogout"
             class="px-4 py-2.5 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 hover:text-rose-200 text-sm font-semibold rounded-xl transition-colors border border-rose-900/50 cursor-pointer"
           >
             Logout

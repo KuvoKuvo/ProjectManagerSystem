@@ -73,6 +73,10 @@ router.beforeEach(async (to) => {
     return { name: 'dashboard' }
   }
 
+  if (authStore.isLoading) {
+    await authStore.checkAuth()
+  }
+
   if (to.meta.allowedRoles){
     const allowed = to.meta.allowedRoles as string[]
     const userRole = authStore.user?.role || ''
