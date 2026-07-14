@@ -112,9 +112,48 @@ namespace ProjectManager.BLL.Services.Employee
         public async System.Threading.Tasks.Task DeleteAsync(int id)
         {
             var employee = await _userManager.FindByIdAsync(id.ToString());
-            if (employee != null)
+            if (employee == null)
             {
-                await _userManager.DeleteAsync(employee);
+                throw new KeyNotFoundException($"Employee with ID {id} not found.");
+            }
+
+            var isProjectManager = await _context.Projects
+                .AnyAsync(p => p.ProjectManagerId == id);
+
+            if (isProjectManager)
+            {
+                throw new InvalidOperationException(
+                    "Cannot delete this employee. They are currently assigned as a Project Manager on one or more projects. " +
+                    "Please reassign the project manager role first."
+                );
+            }
+
+            var hasActiveTasks = await _context.Tasks
+                .AnyAsync(t => t.AssigneeId == id && (t.Status == DAL.Entities.TaskStatus.ToDo || t.Status == DAL.Entities.TaskStatus.InProgress));
+
+            if (hasActiveTasks)
+            {
+                throw new InvalidOperationException(
+                    "Cannot delete this employee. They have active tasks (To Do or In Progress) assigned to them. " +
+                    "Please reassign or close these tasks first."
+                );
+            }
+
+            var projectRelations = await _context.ProjectEmployees
+                .Where(pe => pe.EmployeeId == id)
+                .ToListAsync();
+
+            if (projectRelations.Any())
+            {
+                _context.ProjectEmployees.RemoveRange(projectRelations);
+                await _context.SaveChangesAsync();
+            }
+
+            var result = await _userManager.DeleteAsync(employee);
+            if (!result.Succeeded)
+            {
+                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                throw new Exception($"Failed to delete employee: {errors}");
             }
         }
 

@@ -106,13 +106,24 @@ namespace ProjectManager.API.Controllers
         public async Task<IActionResult> Delete(int id)
         {
             var employee = await _employeeService.GetByIdAsync(id);
-            if(employee == null)
+            if (employee == null)
             {
                 return NotFound(new { Message = $"Employee with ID {id} not found." });
             }
 
-            await _employeeService.DeleteAsync(id);
-            return NoContent();
+            try
+            {
+                await _employeeService.DeleteAsync(id);
+                return NoContent();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "An error occurred while deleting the employee.", Detail = ex.Message });
+            }
         }
     }
 }
