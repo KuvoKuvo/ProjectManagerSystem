@@ -1,14 +1,14 @@
 <script setup lang="ts">
 
-import { ref, reactive, computed, watch } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/api/axios'
-
 const router = useRouter()
 
 const currStep = ref(1)
 const isLoading = ref(false)
 const globalError = ref('')
+const allManagers = ref<any[]>([])
 
 const wizardData = reactive({
 
@@ -27,12 +27,18 @@ const wizardData = reactive({
 
     files: [] as File[]
 })
+const managersList = ref<Array<{
+  id: number, 
+  fullName: string 
+}>>([])
 
 const searchQuery = ref('')
+
 const searchResult = ref<Array<{
-    id: number,
-    fullName: string
+  id: number,
+  fullName: string
 }>>([])
+
 const isSearching = ref(false)
 let debounceTimeout: ReturnType<typeof setTimeout>
 
@@ -54,12 +60,27 @@ const fetchEmployees = async (term: string) => {
     }
 }
 
+const fetchManagers = async () => {
+    try {
+        const response = await api.get('/api/Employees/managers')
+        managersList.value = response.data
+    } catch (err) {
+        console.error('Failed to load managers:', err)
+        globalError.value = 'Failed to load eligible project managers.'
+    }
+}
+
 watch(searchQuery, (newQuery => {
     clearTimeout(debounceTimeout)
     debounceTimeout = setTimeout(() =>{
         fetchEmployees(newQuery)
     }, 300)
 }))
+
+onMounted(() => {
+    fetchManagers()
+})
+
 // VALIDATION OF STEPS
 // Checking dates
 const isStep1Valid = computed(() => {
@@ -116,6 +137,23 @@ const selectProjectManager = (emp: {
     wizardData.projectManagerName = emp.fullName
     searchQuery.value = ''
     searchResult.value = []
+}
+
+const onManagerChange = (event: Event) => {
+    const target = event.target as HTMLSelectElement
+    const selectedId = target.value ? Number(target.value) : null
+    
+    if (selectedId) {
+        const found = managersList.value.find(m => m.id === selectedId)
+        if (found) {
+            wizardData.projectManagerId = found.id
+            wizardData.projectManagerName = found.fullName
+            return
+        }
+    }
+    
+    wizardData.projectManagerId = null
+    wizardData.projectManagerName = ''
 }
 
 // MULTI-CHOICE OF EMPLOYEE
@@ -283,32 +321,21 @@ const submitProject = async () => {
         <div v-if="currStep === 3" class="space-y-6">
           <h2 class="text-xl font-bold text-slate-800 border-b border-slate-100 pb-2">Step 3: Project Manager</h2>
           
-          <div v-if="wizardData.projectManagerId" class="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex justify-between items-center">
-            <div>
-              <p class="text-xs text-emerald-700 font-medium">Selected Supervisor:</p>
-              <p class="text-base font-bold text-slate-800">{{ wizardData.projectManagerName }}</p>
-            </div>
-            <button @click="wizardData.projectManagerId = null" class="text-xs text-red-600 hover:underline cursor-pointer">Reset</button>
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-2">Select Project Manager *</label>
+            <select 
+              :value="wizardData.projectManagerId" 
+              @change="onManagerChange"
+              class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:border-emerald-500 focus:outline-none bg-white">
+              <option v-for="manager in managersList" :key="manager.id" :value="manager.id">
+                👤 {{ manager.fullName }}
+              </option>
+            </select>
           </div>
 
-          <div v-else class="relative">
-            <label class="block text-sm font-semibold text-slate-700 mb-1">Employee search by full name *</label>
-            <input v-model="searchQuery" type="text" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:border-emerald-500 focus:outline-none" />
-            
-            <div v-if="isSearching" class="absolute z-10 w-full bg-white border border-slate-200 rounded-xl mt-1 p-4 shadow-lg text-sm text-slate-500">
-              🔍 Looking for employees on the server...
-            </div>
-            
-            <ul v-if="searchResult.length > 0 && !isSearching" class="absolute z-10 w-full bg-white border border-slate-200 rounded-xl mt-1 shadow-lg max-h-60 overflow-y-auto divide-y divide-slate-100">
-              <li v-for="emp in searchResult" :key="emp.id" @click="selectProjectManager(emp)"
-                class="px-4 py-3 hover:bg-slate-50 cursor-pointer text-sm font-medium text-slate-700 transition-colors">
-                👤 {{ emp.fullName }}
-              </li>
-            </ul>
-
-            <div v-if="searchQuery && searchResult.length === 0 && !isSearching" class="absolute z-10 w-full bg-white border border-slate-200 rounded-xl mt-1 p-4 shadow-lg text-sm text-amber-600">
-              No one was found for the query "{{ searchQuery }}"
-            </div>
+          <div v-if="wizardData.projectManagerId" class="p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
+            <p class="text-xs text-emerald-700 font-medium">Selected Supervisor:</p>
+            <p class="text-base font-bold text-slate-800">{{ wizardData.projectManagerName }}</p>
           </div>
         </div>
 

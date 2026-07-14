@@ -24,13 +24,44 @@ namespace ProjectManager.BLL.Services.Employee
 
         public async Task<IEnumerable<EmployeeDto>> GetAllAsync()
         {
-            var employees = await _userManager.Users.ToListAsync();
+            var employees = await (
+                from user in _context.Users
+                join userRole in _context.UserRoles on user.Id equals userRole.UserId into ur
+                from subUserRole in ur.DefaultIfEmpty()
+                join role in _context.Roles on subUserRole.RoleId equals role.Id into r
+                from subRole in r.DefaultIfEmpty()
+                select new EmployeeDto
+                {
+                    Id = user.Id,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    MiddleName = user.MiddleName,
+                    Email = user.Email,
+                    Role = subRole.Name ?? "Employee"
+                }
+            ).ToListAsync();
             return _mapper.Map<IEnumerable<EmployeeDto>>(employees);
         }
 
         public async Task<EmployeeDto?> GetByIdAsync(int id)
         {
-            var employee = await _userManager.FindByIdAsync(id.ToString());
+            var employee = await (
+                from user in _context.Users
+                where user.Id == id
+                join userRole in _context.UserRoles on user.Id equals userRole.UserId into ur
+                from subUserRole in ur.DefaultIfEmpty()
+                join role in _context.Roles on subUserRole.RoleId equals role.Id into r
+                from subRole in r.DefaultIfEmpty()
+                select new EmployeeDto
+                {
+                    Id = user.Id,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    MiddleName = user.MiddleName,
+                    Email = user.Email,
+                    Role = subRole.Name ?? "Employee"
+                }
+            ).FirstOrDefaultAsync();
             return _mapper.Map<EmployeeDto>(employee);
         }
 
@@ -40,21 +71,35 @@ namespace ProjectManager.BLL.Services.Employee
 
         public async Task<IEnumerable<EmployeeDto>> SearchAsync(string searchTrim)
         {
-            if(string.IsNullOrEmpty(searchTrim))
+            if (string.IsNullOrEmpty(searchTrim))
                 return Enumerable.Empty<EmployeeDto>();
 
             var pattern = $"%{searchTrim.Trim()}%";
 
-            var filteredEmployees = await _userManager.Users
-                .Where(e => Microsoft.EntityFrameworkCore.EF.Functions.Like(e.FirstName, pattern) ||
-                            Microsoft.EntityFrameworkCore.EF.Functions.Like(e.LastName, pattern) ||
-                            Microsoft.EntityFrameworkCore.EF.Functions.Like(e.MiddleName, pattern) ||
-                            Microsoft.EntityFrameworkCore.EF.Functions.Like(e.Email, pattern) ||
-                            Microsoft.EntityFrameworkCore.EF.Functions.Like(e.FirstName + " " + e.LastName, pattern) ||
-                            Microsoft.EntityFrameworkCore.EF.Functions.Like(e.LastName + " " + e.FirstName, pattern))
-                .ToListAsync();
+            var filteredWithRoles = await (
+                from user in _context.Users
+                where EF.Functions.Like(user.FirstName, pattern) ||
+                      EF.Functions.Like(user.LastName, pattern) ||
+                      EF.Functions.Like(user.MiddleName, pattern) ||
+                      EF.Functions.Like(user.Email, pattern) ||
+                      EF.Functions.Like(user.FirstName + " " + user.LastName, pattern) ||
+                      EF.Functions.Like(user.LastName + " " + user.FirstName, pattern)
+                join userRole in _context.UserRoles on user.Id equals userRole.UserId into ur
+                from subUserRole in ur.DefaultIfEmpty()
+                join role in _context.Roles on subUserRole.RoleId equals role.Id into r
+                from subRole in r.DefaultIfEmpty()
+                select new EmployeeDto
+                {
+                    Id = user.Id,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    MiddleName = user.MiddleName,
+                    Email = user.Email,
+                    Role = subRole.Name ?? "Employee"
+                }
+            ).ToListAsync();
 
-            return _mapper.Map<IEnumerable<EmployeeDto>>(filteredEmployees);
+            return filteredWithRoles;
         }
 
         public async Task<EmployeeCreatedResponseDto> CreateAsync(EmployeeCreateDto dto)
@@ -98,7 +143,6 @@ namespace ProjectManager.BLL.Services.Employee
             }
 
             _mapper.Map(dto, employee);
-
             employee.UserName = dto.Email;
 
             var result = await _userManager.UpdateAsync(employee);
@@ -106,6 +150,13 @@ namespace ProjectManager.BLL.Services.Employee
             {
                 var errors = string.Join(", ", result.Errors.Select(e => e.Description));
                 throw new Exception($"Failed to update employee: {errors}");
+            }
+
+            var currentRoles = await _userManager.GetRolesAsync(employee);
+            if (!currentRoles.Contains(dto.Role))
+            {
+                await _userManager.RemoveFromRolesAsync(employee, currentRoles);
+                await _userManager.AddToRoleAsync(employee, dto.Role);
             }
         }
 

@@ -25,15 +25,12 @@ namespace ProjectManager.DAL.Entities
         [Required]
         public TaskStatus Status { get; set; } = TaskStatus.ToDo;
 
-        // Foreign Key to Project
         public int ProjectId { get; set; }
         public virtual Project Project { get; set; } = null!;
 
-        // Foreign Key to Author (Employee)
         public int AuthorId { get; set; }
         public virtual Employee Author { get; set; } = null!;
 
-        // Foreign Key to Assignee (Employee)
         public int AssigneeId { get; set; }
         public virtual Employee Assignee { get; set; } = null!;
     }
