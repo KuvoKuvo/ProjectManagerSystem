@@ -5,14 +5,13 @@ import tailwindcss from '@tailwindcss/vite'
 import http from 'node:http'
 import https from 'node:https'
 
-// Функция для быстрой проверки доступности порта бэкенда
 async function checkBackendEndpoint(url: string): Promise<boolean> {
   return new Promise((resolve) => {
     const client = url.startsWith('https') ? https : http
     const req = client.request(url, { 
       method: 'HEAD', 
-      timeout: 800, // Быстрый таймаут в миллисекундах
-      rejectUnauthorized: false // Игнорируем самоподписанные сертификаты локалки
+      timeout: 800,
+      rejectUnauthorized: false
     }, (res) => {
       resolve(true)
     })
@@ -29,7 +28,6 @@ export default defineConfig(async () => {
   const httpsTarget = 'https://localhost:7069'
   const httpTarget = 'http://localhost:5116'
   
-  // Динамически проверяем, поднялся ли HTTPS у бэкенда
   const isHttpsAlive = await checkBackendEndpoint(httpsTarget)
   const activeTarget = isHttpsAlive ? httpsTarget : httpTarget
 
@@ -51,7 +49,7 @@ export default defineConfig(async () => {
         '/api': {
           target: activeTarget,
           changeOrigin: true,
-          secure: false // Разрешает работу с самоподписанным локальным SSL
+          secure: false
         }
       }
     }
