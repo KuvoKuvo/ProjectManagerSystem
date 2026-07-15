@@ -26,6 +26,16 @@ https://github.com/user-attachments/assets/7ccb2f9b-59da-4220-a3f6-1c660c95f4b2
 
 </details>
 
+<details>
+<summary><b>Demonstration 3: Employee Management & Secure Directory</b></summary>
+<br>
+
+This video demonstrates the process of adding a new employee and using the automatic secure password generator.
+
+https://github.com/user-attachments/assets/003e2c98-b81f-4deb-9fc1-921fd269e5b8
+
+</details>
+
 ---
 
 ## Tech Stack & Architecture
