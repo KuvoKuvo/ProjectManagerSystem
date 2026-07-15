@@ -42,7 +42,6 @@ const updateField = (field: string, value: any, currentTask: any) => {
             :value="newTask.name"
             @input="updateField('name', ($event.target as HTMLInputElement).value, newTask)"
             type="text" 
-            placeholder="e.g. Update API schema"
             class="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900 outline-none transition-all font-medium placeholder-slate-300"
           />
         </div>
@@ -53,7 +52,6 @@ const updateField = (field: string, value: any, currentTask: any) => {
             :value="newTask.comment"
             @input="updateField('comment', ($event.target as HTMLTextAreaElement).value, newTask)"
             rows="3"
-            placeholder="Details about the task..."
             class="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none transition-all font-medium placeholder-slate-300 resize-none"
           ></textarea>
         </div>

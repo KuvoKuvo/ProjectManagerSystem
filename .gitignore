@@ -19,6 +19,10 @@
 # Mono auto generated files
 mono_crash.*
 
+backend/ProjectManager/ProjectManager.API/wwwroot/uploads/*
+
+!backend/ProjectManager/ProjectManager.API/wwwroot/uploads/.gitkeep
+
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/
