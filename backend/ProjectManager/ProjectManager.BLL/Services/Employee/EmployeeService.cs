@@ -210,10 +210,28 @@ namespace ProjectManager.BLL.Services.Employee
 
         private string GenerateTemporaryPassword()
         {
-            const string validChars = "ABCDEFGHJKLMNOPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz0123456789!@#$%^*";
+            const string uppercase = "ABCDEFGHJKLMNOPQRSTUVWXYZ";
+            const string lowercase = "abcdefghijkmnopqrstuvwxyz";
+            const string digits = "0123456789";
+            const string specials = "!@#$%^*";
+
             var random = new Random();
-            return new string(Enumerable.Repeat(validChars, 10)
-                .Select(s => s[random.Next(s.Length)]).ToArray());
+
+            var passwordChars = new List<char>
+            {
+                uppercase[random.Next(uppercase.Length)],
+                lowercase[random.Next(lowercase.Length)],
+                digits[random.Next(digits.Length)],
+                specials[random.Next(specials.Length)]
+            };
+
+            string allChars = uppercase + lowercase + digits + specials;
+            for (int i = 0; i < 6; i++)
+            {
+                passwordChars.Add(allChars[random.Next(allChars.Length)]);
+            }
+
+            return new string(passwordChars.OrderBy(_ => random.Next()).ToArray());
         }
 
         public async Task<IEnumerable<EmployeeDto>> GetEligibleManagersAsync()

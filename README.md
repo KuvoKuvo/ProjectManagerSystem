@@ -2,6 +2,32 @@
 
 A full-stack project management application featuring a 5-step Project Creation Wizard, Employee directory, Task board (Extra 1), and Role-Based Access Control (Extra 2) using ASP.NET Core Identity.
 
+---
+
+## Short video demonstrations
+
+<details>
+<summary><b>Demonstration 1: 5-Step Project Creation Wizard </b></summary>
+<br>
+
+This video demonstrates the step-by-step process of creating a new project.
+
+https://github.com/user-attachments/assets/03d4f926-2e91-4ad9-9973-91a4d36f2459
+
+</details>
+
+<details>
+<summary><b>Demonstration 2: Roles, Access Control & Task Board </b></summary>
+<br>
+
+This video demonstrates the operation of a role-based access control system.
+
+https://github.com/user-attachments/assets/7ccb2f9b-59da-4220-a3f6-1c660c95f4b2
+
+</details>
+
+---
+
 ## Tech Stack & Architecture
 
 The solution strictly follows a **Three-Tier Architecture**:
