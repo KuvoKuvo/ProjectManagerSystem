@@ -80,3 +80,20 @@ export interface ChangePasswordPayload {
   currPassword: string;
   newPassword: string;
 }
+
+export interface TaskFilters {
+    projectId: number;
+    status?: number | '';
+    sortBy?: string;
+    isDescending?: boolean;
+}
+
+export interface TaskUpdatePayload {
+    id: number;
+    name: string;
+    comment?: string;
+    priority: number;
+    status: number;
+    projectId: number;
+    assigneeId: number;
+}

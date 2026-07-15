@@ -1,35 +1,13 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { useAuthStore } from '@/stores/auth';
+import { useLogin } from '@/composables/useLogin'
 
-const email = ref('')
-const password = ref('')
-const errorMessage = ref('')
-const isLoading = ref(false)
-
-const authStore = useAuthStore()
-const router = useRouter()
-
-const handleLogin = async () => {
-    if (!email.value || !password.value) {
-        errorMessage.value = 'Fill in all the fields!'
-        return
-    }
-    try{
-        isLoading.value = true
-        errorMessage.value = ''
-        await authStore.login(email.value, password.value)
-        router.push({ name: 'dashboard' })
-    }
-    catch(error: any){
-        errorMessage.value = error.response?.data?.message || 'Invalid username or password'
-    }
-    finally{
-        isLoading.value = false
-    }
-}
-
+const {
+  email,
+  password,
+  errorMessage,
+  isLoading,
+  handleLogin
+} = useLogin()
 </script>
 
 <template>
@@ -43,20 +21,36 @@ const handleLogin = async () => {
           Log in to your account
         </p>
       </div>
-      
+
       <form class="mt-8 space-y-6" @submit.prevent="handleLogin">
-        <div class="space-y-4 rounded-md">
+        <div class="space-y-4 rounded-md shadow-sm">
           <div>
-            <label for="email-address" class="block text-sm font-medium text-slate-700 mb-1">Email</label>
-            <input id="email-address" v-model="email" type="email" autocomplete="email" required 
+            <label for="email-address" class="block text-sm font-medium text-slate-700 mb-1">
+              Email Address
+            </label>
+            <input 
+              id="email-address" 
+              v-model="email" 
+              type="email" 
+              autocomplete="email" 
+              required 
               class="relative block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 placeholder-slate-400 focus:z-10 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm" 
-              placeholder="admin@projectmanager.com" />
+              placeholder="admin@projectmanager.com" 
+            />
           </div>
           <div>
-            <label for="password" class="block text-sm font-medium text-slate-700 mb-1">Password</label>
-            <input id="password" v-model="password" type="password" autocomplete="current-password" required 
+            <label for="password" class="block text-sm font-medium text-slate-700 mb-1">
+              Password
+            </label>
+            <input 
+              id="password" 
+              v-model="password" 
+              type="password" 
+              autocomplete="current-password" 
+              required 
               class="relative block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 placeholder-slate-400 focus:z-10 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm" 
-              placeholder="••••••••" />
+              placeholder="••••••••" 
+            />
           </div>
         </div>
 
@@ -65,10 +59,13 @@ const handleLogin = async () => {
         </div>
 
         <div>
-          <button type="submit" :disabled="isLoading"
-            class="group relative flex w-full justify-center rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-emerald-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 transition-colors disabled:opacity-50 cursor-pointer">
-            <span v-if="isLoading">Log in...</span>
-            <span v-else>Log in</span>
+          <button 
+            type="submit" 
+            :disabled="isLoading"
+            class="group relative flex w-full justify-center rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-emerald-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:opacity-50 transition-all cursor-pointer"
+          >
+            <span v-if="isLoading">Signing in...</span>
+            <span v-else>Sign In</span>
           </button>
         </div>
       </form>

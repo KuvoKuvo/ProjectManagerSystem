@@ -1,13 +1,19 @@
 import api from './axios';
-import type { Task, TaskCreatePayload } from './types';
+import type { Task, TaskCreatePayload, TaskFilters, TaskUpdatePayload } from './types';
 
 export const TasksService = {
   // Get a list of tasks for a specific project
-  async getByProjectId(projectId: number): Promise<Task[]> {
-    const response = await api.get<Task[]>('/api/Tasks', {
-      params: { projectId }
-    });
+  async getTasks(filters: TaskFilters): Promise<Task[]>{
+    const params: Record<string, any> = { projectId: filters.projectId };
+    if (filters.status !== undefined && filters.status !== '') params.status = filters.status;
+    if (filters.status !== undefined && filters.status !== '') params.status = filters.status;
+    if (filters.isDescending !== undefined) params.isDescending = filters.isDescending;
+    const response = await api.get<Task[]>('/api/Tasks', { params });
     return response.data;
+  },
+
+  async update(id: number, payload: TaskUpdatePayload): Promise<void>{
+    await api.put(`/api/Tasks/${id}`, payload);
   },
 
   // Create a new task

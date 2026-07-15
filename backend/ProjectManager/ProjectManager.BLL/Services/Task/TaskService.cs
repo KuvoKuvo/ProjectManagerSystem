@@ -37,8 +37,10 @@ namespace ProjectManager.BLL.Services.Task
             {
                 if (userRole == "ProjectManager")
                 {
-                    query = query.Where(t => t.Project.ProjectManagerId == currUserId.Value ||
-                        t.Project.ProjectEmployees.Any(pe => pe.EmployeeId == currUserId.Value));
+                    query = query.Where(t =>
+                        t.Project.ProjectManagerId == currUserId.Value ||
+                        t.AssigneeId == currUserId.Value
+                    );
                 }
                 else if (userRole == "Employee")
                 {
