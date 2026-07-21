@@ -39,22 +39,23 @@ export function useCreateProject(){
         if (currStep.value > 1) currStep.value--
     }
 
-    const isNextButtonActive = computed(() =>{
-        switch(currStep.value){
-            case 1:
-                return !!(wizardData.name && wizardData.startDate)
-            case 2:
-                return !!(wizardData.customerCompany && wizardData.executorCompany)
-            case 3:
-                return wizardData.projectManagerId !== null
-            case 4:
-                return wizardData.employees.length > 0
-            case 5:
-                return true
-            default:
-                return false
+    const isNextButtonActive = computed(() => {
+        if (currStep.value === 1) {
+            if (!wizardData.name.trim() || !wizardData.startDate) return false;
+    
+            if (wizardData.endDate && new Date(wizardData.endDate) < new Date(wizardData.startDate)) {
+                return false;
+            }
+            return true;
         }
-    })
+        if (currStep.value === 2) {
+            return wizardData.customerCompany.trim() !== '' && wizardData.executorCompany.trim() !== '';
+        }
+        if (currStep.value === 3) {
+            return wizardData.projectManagerId !== null && wizardData.projectManagerId > 0;
+        }
+        return true;
+    });
 
     // STEP 3: MANAGERS
     const fetchManagers = async () => {

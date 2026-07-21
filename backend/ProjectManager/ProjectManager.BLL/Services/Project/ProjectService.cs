@@ -1,9 +1,13 @@
 ﻿using AutoMapper;
+using AutoMapper.QueryableExtensions;
 using Microsoft.EntityFrameworkCore;
 using ProjectManager.BLL.DTOs.Project;
 using ProjectManager.BLL.Models;
+using ProjectManager.BLL.Services.File;
 using ProjectManager.DAL;
 using ProjectManager.DAL.Entities;
+using ProjectManager.DAL.Models;
+using ProjectManager.DAL.UnitOfWork;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -12,69 +16,47 @@ namespace ProjectManager.BLL.Services.Project
 {
     public class ProjectService : IProjectService
     {
-        private readonly AppDbContext _context;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
+        private readonly ILocalFileService _fileService;
 
-        public ProjectService(AppDbContext context, IMapper mapper)
+        public ProjectService(IUnitOfWork unitOfWork, IMapper mapper, ILocalFileService fileService)
         {
-            _context = context;
+            _unitOfWork = unitOfWork;
             _mapper = mapper;
+            _fileService = fileService;
         }
 
         /// <summary>
         /// Requirements check: Implements dynamic filtering, sorting, and role-based data isolation.
         /// </summary>
 
-        public async Task<IEnumerable<ProjectDto>> GetProjectsAsync(ProjectQueryParameters parameters, int? currUserId = null, string? userRole = null)
+        public async Task<PagedResult<ProjectDto>> GetProjectsAsync(
+            ProjectQueryParameters parameters,
+            int? currUserId = null,
+            string? userRole = null)
         {
-            var query = _context.Projects.Include(p => p.ProjectManager).AsQueryable();
 
-            // Role-based security filter (Senior-style rewrite)
-            if (currUserId.HasValue)
-            {
-                var normalizedRole = userRole?.Trim().ToLower();
+            // 1. Get the IQueryable and the count task
+            var (query, totalCountTask) = _unitOfWork.Projects.GetProjectsQuery(parameters, currUserId, userRole);
 
-                if (normalizedRole != "director")
-                {
-                    query = query.Where(p =>
-                        p.ProjectManagerId == currUserId.Value ||
-                        p.ProjectEmployees.Any(pe => pe.EmployeeId == currUserId.Value)
-                    );
-                }
-            }
+            // 2. ProjectTo will automatically generate a lightweight SQL SELECT for the ProjectDto fields.
+            var items = await query
+                .ProjectTo<ProjectDto>(_mapper.ConfigurationProvider)
+                .Skip((parameters.PageNumber - 1) * parameters.PageSize)
+                .Take(parameters.PageSize)
+                .ToListAsync();
 
-            // Dynamic Filtering
-            if (parameters.StartDateTo.HasValue)
-                query = query.Where(p => p.StartDate <= parameters.StartDateTo.Value);
+            var totalCount = await totalCountTask;
 
-            if (parameters.StartDateFrom.HasValue)
-                query = query.Where(p => p.StartDate >= parameters.StartDateFrom.Value);
-
-            if (parameters.Priority.HasValue)
-                query = query.Where(p => p.Priority == parameters.Priority.Value);
-
-            // Dynamic Sorting
-            query = parameters.SortBy.ToLower() switch
-            {
-                "startdate" => parameters.IsDescending ? query.OrderByDescending(p => p.StartDate) : query.OrderBy(p => p.StartDate),
-                "priority" => parameters.IsDescending ? query.OrderByDescending(p => p.Priority) : query.OrderBy(p => p.Priority),
-                _ => parameters.IsDescending ? query.OrderByDescending(p => p.Name) : query.OrderBy(p => p.Name)
-            };
-
-            var projects = await query.ToListAsync();
-            return _mapper.Map<IEnumerable<ProjectDto>>(projects);
+            // 3. Return the grouped result
+            return new PagedResult<ProjectDto>(items, totalCount, parameters.PageNumber, parameters.PageSize);
         }
 
         public async Task<ProjectDetailsDto?> GetByIdAsync(int id)
         {
-            var projects = await _context.Projects
-                .Include(p => p.ProjectManager)
-                .Include(p => p.ProjectEmployees)
-                    .ThenInclude(pe => pe.Employee)
-                .Include(p => p.Documents)
-                .FirstOrDefaultAsync(p => p.Id == id);
-
-            return _mapper.Map<ProjectDetailsDto>(projects);
+            var project = await _unitOfWork.Projects.GetProjectWithDetailsByIdAsync(id);
+            return _mapper.Map<ProjectDetailsDto>(project);
         }
 
         /// <summary>
@@ -82,24 +64,23 @@ namespace ProjectManager.BLL.Services.Project
         /// </summary>
         public async Task<ProjectDetailsDto> CreateAsync(ProjectCreateDto dto)
         {
-            var projects = _mapper.Map<DAL.Entities.Project>(dto);
+            var project = _mapper.Map<ProjectManager.DAL.Entities.Project>(dto);
 
-            if(dto.EmployeeIds != null && dto.EmployeeIds.Any())
+            if (dto.EmployeeIds != null && dto.EmployeeIds.Any())
             {
-                foreach(var empId in dto.EmployeeIds)
+                foreach (var empId in dto.EmployeeIds)
                 {
-                    projects.ProjectEmployees.Add(new ProjectEmployee
+                    project.ProjectEmployees.Add(new ProjectEmployee
                     {
                         EmployeeId = empId
                     });
                 }
             }
 
-            _context.Projects.Add(projects);
-            await _context.SaveChangesAsync();
+            await _unitOfWork.Projects.AddAsync(project);
+            await _unitOfWork.CompleteAsync();
 
-            // Return full details including nested entities
-            return await GetByIdAsync(projects.Id) ?? _mapper.Map<ProjectDetailsDto>(projects);
+            return await GetByIdAsync(project.Id) ?? _mapper.Map<ProjectDetailsDto>(project);
         }
 
         /// <summary>
@@ -108,77 +89,73 @@ namespace ProjectManager.BLL.Services.Project
 
         public async System.Threading.Tasks.Task UpdateAsync(ProjectUpdateDto dto)
         {
-            var project = await _context.Projects
-                .Include(p => p.ProjectEmployees)
-                .FirstOrDefaultAsync(p => p.Id == dto.Id);
+            var project = await _unitOfWork.Projects.GetProjectWithDetailsByIdAsync(dto.Id);
 
-            if(project == null)
+            if (project == null)
                 throw new KeyNotFoundException($"Project with ID {dto.Id} not found.");
 
             _mapper.Map(dto, project);
 
-            //Remove employees that are no longer assigned
+            // Удаляем сотрудников, которых больше нет в списке назначения
             var toRemove = project.ProjectEmployees
                 .Where(pe => !dto.EmployeeIds.Contains(pe.EmployeeId)).ToList();
 
             foreach (var pe in toRemove)
-                project.ProjectEmployees.Remove(pe);
+                _unitOfWork.Projects.RemoveProjectEmployeeRelation(pe);
 
-            //Add newly assigned employees
+            // Добавляем новых сотрудников
             var currEmployeeIds = project.ProjectEmployees.Select(pe => pe.EmployeeId).ToList();
-            foreach(var empId in dto.EmployeeIds.Where(id => !currEmployeeIds.Contains(id)))
+            foreach (var empId in dto.EmployeeIds.Where(id => !currEmployeeIds.Contains(id)))
             {
-                project.ProjectEmployees.Add(new ProjectEmployee
+                _unitOfWork.Projects.AddProjectEmployeeRelation(new ProjectEmployee
                 {
                     ProjectId = dto.Id,
                     EmployeeId = empId
                 });
             }
-            await _context.SaveChangesAsync();
-                
+
+            _unitOfWork.Projects.Update(project);
+            await _unitOfWork.CompleteAsync();
         }
         public async System.Threading.Tasks.Task DeleteAsync(int id)
         {
-            var project = await _context.Projects.FindAsync(id);
-            if(project != null)
+            var project = await _unitOfWork.Projects.GetByIdAsync(id);
+            if (project != null)
             {
-                _context.Projects.Remove(project);
-                await _context.SaveChangesAsync();
+                _unitOfWork.Projects.Remove(project);
+                await _unitOfWork.CompleteAsync();
             }
         }
 
         public async System.Threading.Tasks.Task AssignEmployeeAsync(int projectId, int employeeId)
         {
-            var exists = await _context.ProjectEmployees
-                .AnyAsync(pe => pe.ProjectId == projectId && pe.EmployeeId == employeeId);
+            var relation = await _unitOfWork.Projects.GetProjectEmployeeRelationAsync(projectId, employeeId);
 
-            if (!exists)
+            if (relation == null)
             {
-                _context.ProjectEmployees.Add(new ProjectEmployee
+                _unitOfWork.Projects.AddProjectEmployeeRelation(new ProjectEmployee
                 {
                     ProjectId = projectId,
                     EmployeeId = employeeId
                 });
-                await _context.SaveChangesAsync();
+                await _unitOfWork.CompleteAsync();
             }
         }
 
         public async System.Threading.Tasks.Task RemoveEmployeeAsync(int projectId, int employeeId)
         {
-            var record = await _context.ProjectEmployees
-                .FirstOrDefaultAsync(pe => pe.ProjectId == projectId && pe.EmployeeId == employeeId);
+            var relation = await _unitOfWork.Projects.GetProjectEmployeeRelationAsync(projectId, employeeId);
 
-            if (record != null)
+            if (relation != null)
             {
-                _context.ProjectEmployees.Remove(record);
-                await _context.SaveChangesAsync();
+                _unitOfWork.Projects.RemoveProjectEmployeeRelation(relation);
+                await _unitOfWork.CompleteAsync();
             }
         }
 
         public async Task<ProjectDocumentDto> AddDocumentAsync(int projectId, string fileName, string filePath)
         {
-            // Check if project exists
-            var project = await _context.Projects.FindAsync(projectId);
+            var project = await _unitOfWork.Projects.GetByIdAsync(projectId);
             if (project == null)
             {
                 throw new KeyNotFoundException($"Project with ID {projectId} not found.");
@@ -191,10 +168,9 @@ namespace ProjectManager.BLL.Services.Project
                 FilePath = filePath
             };
 
-            _context.ProjectDocuments.Add(document);
-            await _context.SaveChangesAsync();
+            await _unitOfWork.ProjectDocuments.AddAsync(document);
+            await _unitOfWork.CompleteAsync();
 
-            // Map to DTO manually or via AutoMapper
             return new ProjectDocumentDto
             {
                 Id = document.Id,
@@ -203,20 +179,23 @@ namespace ProjectManager.BLL.Services.Project
             };
         }
 
-        public async Task<ProjectDocumentDto?> GetDocumentByIdAsync(int documentId)
+        public async Task<FileDownloadModel?> GetDocumentForDownloadAsync(int projectId, int documentId)
         {
-            var document = await _context.ProjectDocuments
-                .FirstOrDefaultAsync(d => d.Id == documentId);
+            var project = await _unitOfWork.Projects.GetProjectWithDetailsByIdAsync(projectId);
+            if (project == null) return null;
 
+            var document = project.Documents.FirstOrDefault(d => d.Id == documentId);
             if (document == null) return null;
 
-            return new ProjectDocumentDto
-            { 
-                Id = document.Id,
-                FileName = document.FileName,
-                FilePath = document.FilePath
+            var fileData = await _fileService.GetFileAsync(document.FilePath);
+            if (fileData == null) return null;
+
+            return new FileDownloadModel
+            {
+                Bytes = fileData.Value.Bytes,
+                ContentType = fileData.Value.ContentType,
+                FileName = document.FileName
             };
         }
-
     }
 }

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using ProjectManager.BLL.DTOs.Employee;
 using ProjectManager.DAL;
 using ProjectManager.DAL.Entities;
+using ProjectManager.DAL.UnitOfWork;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -11,58 +12,27 @@ namespace ProjectManager.BLL.Services.Employee
 {
     public class EmployeeService : IEmployeeService
     {
-        private readonly AppDbContext _context;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
-        private readonly UserManager<DAL.Entities.Employee> _userManager;
+        private readonly UserManager<ProjectManager.DAL.Entities.Employee> _userManager;
 
-        public EmployeeService(AppDbContext context, IMapper mapper, UserManager<DAL.Entities.Employee> userManager)
+        public EmployeeService(IUnitOfWork unitOfWork, IMapper mapper, UserManager<ProjectManager.DAL.Entities.Employee> userManager)
         {
-            _context = context;
+            _unitOfWork = unitOfWork;
             _mapper = mapper;
             _userManager = userManager;
         }
 
         public async Task<IEnumerable<EmployeeDto>> GetAllAsync()
         {
-            var employees = await (
-                from user in _context.Users
-                join userRole in _context.UserRoles on user.Id equals userRole.UserId into ur
-                from subUserRole in ur.DefaultIfEmpty()
-                join role in _context.Roles on subUserRole.RoleId equals role.Id into r
-                from subRole in r.DefaultIfEmpty()
-                select new EmployeeDto
-                {
-                    Id = user.Id,
-                    FirstName = user.FirstName,
-                    LastName = user.LastName,
-                    MiddleName = user.MiddleName,
-                    Email = user.Email,
-                    Role = subRole.Name ?? "Employee"
-                }
-            ).ToListAsync();
-            return _mapper.Map<IEnumerable<EmployeeDto>>(employees);
+            var employeesWithRoles = await _unitOfWork.Employees.GetAllWithRolesAsync();
+            return _mapper.Map<IEnumerable<EmployeeDto>>(employeesWithRoles);
         }
 
         public async Task<EmployeeDto?> GetByIdAsync(int id)
         {
-            var employee = await (
-                from user in _context.Users
-                where user.Id == id
-                join userRole in _context.UserRoles on user.Id equals userRole.UserId into ur
-                from subUserRole in ur.DefaultIfEmpty()
-                join role in _context.Roles on subUserRole.RoleId equals role.Id into r
-                from subRole in r.DefaultIfEmpty()
-                select new EmployeeDto
-                {
-                    Id = user.Id,
-                    FirstName = user.FirstName,
-                    LastName = user.LastName,
-                    MiddleName = user.MiddleName,
-                    Email = user.Email,
-                    Role = subRole.Name ?? "Employee"
-                }
-            ).FirstOrDefaultAsync();
-            return _mapper.Map<EmployeeDto>(employee);
+            var employeeWithRole = await _unitOfWork.Employees.GetByIdWithRoleAsync(id);
+            return _mapper.Map<EmployeeDto>(employeeWithRole);
         }
 
         /// <summary>
@@ -71,35 +41,8 @@ namespace ProjectManager.BLL.Services.Employee
 
         public async Task<IEnumerable<EmployeeDto>> SearchAsync(string searchTrim)
         {
-            if (string.IsNullOrEmpty(searchTrim))
-                return Enumerable.Empty<EmployeeDto>();
-
-            var pattern = $"%{searchTrim.Trim()}%";
-
-            var filteredWithRoles = await (
-                from user in _context.Users
-                where EF.Functions.Like(user.FirstName, pattern) ||
-                      EF.Functions.Like(user.LastName, pattern) ||
-                      EF.Functions.Like(user.MiddleName, pattern) ||
-                      EF.Functions.Like(user.Email, pattern) ||
-                      EF.Functions.Like(user.FirstName + " " + user.LastName, pattern) ||
-                      EF.Functions.Like(user.LastName + " " + user.FirstName, pattern)
-                join userRole in _context.UserRoles on user.Id equals userRole.UserId into ur
-                from subUserRole in ur.DefaultIfEmpty()
-                join role in _context.Roles on subUserRole.RoleId equals role.Id into r
-                from subRole in r.DefaultIfEmpty()
-                select new EmployeeDto
-                {
-                    Id = user.Id,
-                    FirstName = user.FirstName,
-                    LastName = user.LastName,
-                    MiddleName = user.MiddleName,
-                    Email = user.Email,
-                    Role = subRole.Name ?? "Employee"
-                }
-            ).ToListAsync();
-
-            return filteredWithRoles;
+            var filteredWithRoles = await _unitOfWork.Employees.SearchWithRolesAsync(searchTrim);
+            return _mapper.Map<IEnumerable<EmployeeDto>>(filteredWithRoles);
         }
 
         public async Task<EmployeeCreatedResponseDto> CreateAsync(EmployeeCreateDto dto)
@@ -112,7 +55,7 @@ namespace ProjectManager.BLL.Services.Employee
 
             string tempPassword = GenerateTemporaryPassword();
 
-            var employee = _mapper.Map<DAL.Entities.Employee>(dto);
+            var employee = _mapper.Map<ProjectManager.DAL.Entities.Employee>(dto);
             employee.UserName = dto.Email;
             employee.EmailConfirmed = true;
             employee.IsTemporaryPassword = true;
@@ -130,7 +73,7 @@ namespace ProjectManager.BLL.Services.Employee
             return new EmployeeCreatedResponseDto
             {
                 Employee = _mapper.Map<EmployeeDto>(employee),
-                TemporaryPassword = tempPassword 
+                TemporaryPassword = tempPassword
             };
         }
 
@@ -168,9 +111,8 @@ namespace ProjectManager.BLL.Services.Employee
                 throw new KeyNotFoundException($"Employee with ID {id} not found.");
             }
 
-            var isProjectManager = await _context.Projects
-                .AnyAsync(p => p.ProjectManagerId == id);
-
+            // Проверки бизнес-логики вынесены в специализированные методы репозитория в DAL
+            var isProjectManager = await _unitOfWork.Employees.IsEmployeeProjectManagerAsync(id);
             if (isProjectManager)
             {
                 throw new InvalidOperationException(
@@ -179,9 +121,7 @@ namespace ProjectManager.BLL.Services.Employee
                 );
             }
 
-            var hasActiveTasks = await _context.Tasks
-                .AnyAsync(t => t.AssigneeId == id && (t.Status == DAL.Entities.TaskStatus.ToDo || t.Status == DAL.Entities.TaskStatus.InProgress));
-
+            var hasActiveTasks = await _unitOfWork.Employees.HasActiveTasksAsync(id);
             if (hasActiveTasks)
             {
                 throw new InvalidOperationException(
@@ -190,14 +130,11 @@ namespace ProjectManager.BLL.Services.Employee
                 );
             }
 
-            var projectRelations = await _context.ProjectEmployees
-                .Where(pe => pe.EmployeeId == id)
-                .ToListAsync();
-
+            var projectRelations = await _unitOfWork.Employees.GetProjectEmployeesByEmployeeIdAsync(id);
             if (projectRelations.Any())
             {
-                _context.ProjectEmployees.RemoveRange(projectRelations);
-                await _context.SaveChangesAsync();
+                _unitOfWork.Employees.RemoveRange((IEnumerable<DAL.Entities.Employee>)projectRelations);
+                await _unitOfWork.CompleteAsync();
             }
 
             var result = await _userManager.DeleteAsync(employee);

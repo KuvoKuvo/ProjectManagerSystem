@@ -11,6 +11,10 @@ const {
   projects,
   stats,
   filters,
+  pageNumber,
+  totalCount,
+  totalPages,
+  changePage,
   handleLogout,
   deleteProject
 } = useDashboard()
@@ -154,9 +158,43 @@ const resetFilters = () => {
               </tr>
             </tbody>
           </table>
+          <div v-if="totalPages > 1" class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+            <div class="text-xs text-slate-500 font-semibold">
+              Showing page <span class="font-bold text-slate-800">{{ pageNumber }}</span> of <span class="font-bold text-slate-800">{{ totalPages }}</span> (Total {{ totalCount }} projects)
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button 
+                @click="changePage(pageNumber - 1)" 
+                :disabled="pageNumber <= 1 || isLoading"
+                class="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 disabled:opacity-40 rounded-lg text-xs font-bold transition-all cursor-pointer"
+              >
+                ← Prev
+              </button>
+
+              <button 
+                v-for="p in totalPages" 
+                :key="p"
+                @click="changePage(p)"
+                :class="[
+                  'px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
+                  p === pageNumber ? 'bg-slate-900 text-white' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+                ]"
+              >
+                {{ p }}
+              </button>
+
+              <button 
+                @click="changePage(pageNumber + 1)" 
+                :disabled="pageNumber >= totalPages || isLoading"
+                class="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 disabled:opacity-40 rounded-lg text-xs font-bold transition-all cursor-pointer"
+              >
+                Next →
+              </button>
+            </div>
+          </div>  
         </div>
       </div>
-
     </div>
   </div>
 </template>

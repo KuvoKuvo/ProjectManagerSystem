@@ -1,6 +1,26 @@
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { EmployeesService } from '@/api/employees.service'
 import type { Employee, EmployeeCreatePayload } from '@/api/types'
+
+function parseApiError(err: any, fallbackMessage: string = 'An error occurred'): string {
+  if (err?.response?.data) {
+    const data = err.response.data
+    
+    if (data.message) return data.message
+    if (data.errors && typeof data.errors === 'object') {
+      const errorMessages: string[] = []
+      for (const key of Object.keys(data.errors)) {
+        if (Array.isArray(data.errors[key])) {
+          errorMessages.push(...data.errors[key])
+        }
+      }
+      if (errorMessages.length > 0) {
+        return errorMessages.join(', ')
+      }
+    }
+  }
+  return fallbackMessage
+}
 
 export function useEmployees() {
     const isLoading = ref(false)
@@ -10,6 +30,7 @@ export function useEmployees() {
 
     const employees = ref<Employee[]>([])
     const searchQuery = ref('')
+    let searchTimeout: any = null
 
     const generatedPassword = ref('')
     const isCopied = ref(false)
@@ -28,20 +49,30 @@ export function useEmployees() {
     const form = reactive<EmployeeCreatePayload>({ ...initialFormState })
 
     // Loading employee list
-    const fetchEmployees = async () => {
+    const fetchEmployees = async (query: string = '') => {
         try{
             listLoading.value = true
-            globalError.value = ''
-            employees.value = await EmployeesService.getAll()
+            if (query.trim()){
+                employees.value = await EmployeesService.search(query.trim())
+            }
+            else{
+                employees.value = await EmployeesService.getAll()
+            }
         }
         catch (err: any){
-            console.error('Failed to load employees list:', err)
-            globalError.value = 'Could not load employees. Please refresh.'
+            console.error('Failed to fetch employees:', err)
         }
         finally{
             listLoading.value = false
         }
     }
+
+    watch(searchQuery, (newQuery) => {
+        clearTimeout(searchTimeout)
+        searchTimeout = setTimeout(() => {
+            fetchEmployees(newQuery)
+        }, 300)
+    })
 
     // Client-side filtering (computed property)
     const filteredEmployees = computed(() => {
@@ -124,12 +155,13 @@ export function useEmployees() {
         }
         catch (err: any){
             console.error('Save employee error:', err)
-            globalError.value = err.response?.data?.message || 'Action failed. Check fields or try again.'
+            globalError.value = parseApiError(err, 'Failed to save employee data.')
         }
         finally{
             isLoading.value = false
         }
     }
+    
     // Deleting an employee
     const deleteEmployee = async (id: number, name: string) => {
         if (!confirm(`Are you sure you want to delete employee "${name}"?`)){
@@ -163,15 +195,16 @@ export function useEmployees() {
         globalError,
         successMessage,
         searchQuery,
+        employees,
+        filteredEmployees: employees,
         generatedPassword,
         isCopied,
         isEditMode,
         form,
-        filteredEmployees,
         copyPassword,
         startEdit,
         cancelEdit,
         submitForm,
         deleteEmployee
-    }
+  }
 }

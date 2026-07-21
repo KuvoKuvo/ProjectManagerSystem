@@ -105,6 +105,9 @@ const handleAddEmployee = () => {
               type="date" 
               class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-slate-900 outline-none"
             />
+            <p v-if="editForm.endDate && editForm.startDate && new Date(editForm.endDate) < new Date(editForm.startDate)" class="text-[10px] text-red-500 font-bold">
+              ⚠️ End date cannot be before start date
+            </p>
           </div>
           <div class="space-y-1.5">
             <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Priority</label>
@@ -194,8 +197,8 @@ const handleAddEmployee = () => {
         </button>
         <button 
           @click="$emit('save')"
-          :disabled="isSaving"
-          class="px-4 py-2 text-sm font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
+          :disabled="isSaving || (!!editForm.endDate && new Date(editForm.endDate) < new Date(editForm.startDate))"
+          class="px-4 py-2 text-sm font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
         >
           {{ isSaving ? 'Saving...' : 'Save Changes' }}
         </button>

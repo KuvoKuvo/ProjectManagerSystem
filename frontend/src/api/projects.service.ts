@@ -1,9 +1,9 @@
 import api from './axios';
-import type { Project, ProjectCreatePayload, ProjectFilters } from './types';
+import type { Project, ProjectCreatePayload, ProjectFilters, PagedResult } from './types';
 
 export const ProjectsService = {
   // Get a filtered and sorted list of projects
-  async getAll(filters: ProjectFilters = {}): Promise<Project[]> {
+  async getAll(filters: ProjectFilters = {}): Promise<PagedResult<Project>> {
     const params: Record<string, any> = {};
 
     if (filters.startDateFrom) params.startDateFrom = filters.startDateFrom;
@@ -13,7 +13,10 @@ export const ProjectsService = {
     params.sortBy = filters.sortBy || 'Name';
     params.isDescending = filters.isDescending ?? false;
 
-    const response = await api.get<Project[]>('/api/Projects', { params });
+    params.pageNumber = filters.pageNumber || 1;
+    params.pageSize = filters.pageSize || 10;
+
+    const response = await api.get<PagedResult<Project>>('/api/Projects', { params });
     return response.data;
   },
 

@@ -3,13 +3,12 @@ using Microsoft.AspNetCore.Mvc;
 using ProjectManager.BLL.DTOs.Employee;
 using ProjectManager.BLL.Services;
 using ProjectManager.BLL.Services.Employee;
+using ProjectManager.DAL.Entities;
 
 namespace ProjectManager.API.Controllers
 {
-    [ApiController]
-    [Route("api/[controller]")]
     [Authorize]
-    public class EmployeesController : ControllerBase
+    public class EmployeesController : BaseApiController
     {
         private readonly IEmployeeService _employeeService;
 
@@ -22,8 +21,7 @@ namespace ProjectManager.API.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<EmployeeDto>>> GetAll()
         {
-            var employees = await _employeeService.GetAllAsync();
-            return Ok(employees);
+            return Ok(await _employeeService.GetAllAsync());
         }
 
         // GET: api/employees/{id}
@@ -31,10 +29,9 @@ namespace ProjectManager.API.Controllers
         public async Task<ActionResult<EmployeeDto>> GetById(int id)
         {
             var employee = await _employeeService.GetByIdAsync(id);
-            if(employee == null)
-            {
+            if (employee == null)
                 return NotFound(new { Message = $"Employee with ID {id} not found." });
-            }
+
             return Ok(employee);
         }
 
@@ -43,28 +40,20 @@ namespace ProjectManager.API.Controllers
         [HttpGet("search")]
         public async Task<ActionResult<IEnumerable<EmployeeDto>>> Search([FromQuery] string term)
         {
-            var results = await _employeeService.SearchAsync(term);
-            return Ok(results);
+            return Ok(await _employeeService.SearchAsync(term));
         }
 
         // POST: api/employees
         [HttpPost]
-        [Authorize(Roles = "Director")]
+        [Authorize(Roles = ApplicationRoles.Director)]
         public async Task<ActionResult<EmployeeCreatedResponseDto>> Create([FromBody] EmployeeCreateDto dto)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
             try
             {
-
                 var createdResponse = await _employeeService.CreateAsync(dto);
-                return CreatedAtAction(nameof(GetById), new
-                {
-                    id = createdResponse.Employee.Id
-                }, createdResponse);
+                return CreatedAtAction(nameof(GetById), new { id = createdResponse.Employee.Id }, createdResponse);
             }
             catch (ArgumentException ex)
             {
@@ -74,24 +63,15 @@ namespace ProjectManager.API.Controllers
 
         // PUT: api/employees/{id}
         [HttpPut("{id:int}")]
-        [Authorize(Roles = "Director")]
+        [Authorize(Roles = ApplicationRoles.Director)]
         public async Task<IActionResult> Update(int id, [FromBody] EmployeeUpdateDto dto)
         {
-            if(id != dto.Id)
-            {
-                return BadRequest(new
-                {
-                    Message = "ID in route does not match ID in body."
-                });
-            }
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
+            if (id != dto.Id) return BadRequest(new { Message = "ID in route does not match ID in body." });
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
             try
             {
                 await _employeeService.UpdateAsync(dto);
-                // 204 No Content is standard for successful updates
                 return NoContent();
             }
             catch (KeyNotFoundException ex)
@@ -102,14 +82,12 @@ namespace ProjectManager.API.Controllers
 
         // DELETE: api/employees/{id}
         [HttpDelete("{id:int}")]
-        [Authorize(Roles = "Director")]
+        [Authorize(Roles = ApplicationRoles.Director)]
         public async Task<IActionResult> Delete(int id)
         {
             var employee = await _employeeService.GetByIdAsync(id);
             if (employee == null)
-            {
                 return NotFound(new { Message = $"Employee with ID {id} not found." });
-            }
 
             try
             {
@@ -120,10 +98,6 @@ namespace ProjectManager.API.Controllers
             {
                 return BadRequest(new { Message = ex.Message });
             }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { Message = "An error occurred while deleting the employee.", Detail = ex.Message });
-            }
         }
 
         // GET: api/employees/managers
@@ -131,8 +105,7 @@ namespace ProjectManager.API.Controllers
         [HttpGet("managers")]
         public async Task<ActionResult<IEnumerable<EmployeeDto>>> GetEligibleManagers()
         {
-            var managers = await _employeeService.GetEligibleManagersAsync();
-            return Ok(managers);
+            return Ok(await _employeeService.GetEligibleManagersAsync());
         }
     }
 }

@@ -1,8 +1,12 @@
 ﻿using AutoMapper;
+using AutoMapper.QueryableExtensions;
 using Microsoft.EntityFrameworkCore;
 using ProjectManager.BLL.DTOs.Task;
 using ProjectManager.BLL.Models;
 using ProjectManager.DAL;
+using ProjectManager.DAL.Entities;
+using ProjectManager.DAL.Models;
+using ProjectManager.DAL.UnitOfWork;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -11,12 +15,12 @@ namespace ProjectManager.BLL.Services.Task
 {
     public class TaskService : ITaskService
     {
-        private readonly AppDbContext _context;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
 
-        public TaskService(AppDbContext context, IMapper mapper)
+        public TaskService(IUnitOfWork unitOfWork, IMapper mapper)
         {
-            _context = context;
+            _unitOfWork = unitOfWork;
             _mapper = mapper;
         }
 
@@ -24,101 +28,76 @@ namespace ProjectManager.BLL.Services.Task
         /// Requirements check: Filters tasks by status/project and enforces security visibility.
         /// </summary>
 
-        public async Task<IEnumerable<TaskDto>> GetTasksAsync(TaskQueryParameters parameters, int? currUserId = null, string? userRole = null)
+        public async Task<PagedResult<TaskDto>> GetTasksAsync(
+            TaskQueryParameters parameters,
+            int? currUserId = null,
+            string? userRole = null)
         {
-            var query = _context.Tasks
-                .Include(t => t.Project)
-                .Include(t => t.Author)
-                .Include(t => t.Assignee)
-                .AsQueryable();
+            // 1. Get the IQueryable and the count task
+            var (query, totalCountTask) = _unitOfWork.Tasks.GetTasksQuery(parameters, currUserId, userRole);
 
-            //Role-based security filters
-            if (!string.IsNullOrEmpty(userRole) && currUserId.HasValue)
-            {
-                if (userRole == "ProjectManager")
-                {
-                    query = query.Where(t =>
-                        t.Project.ProjectManagerId == currUserId.Value ||
-                        t.AssigneeId == currUserId.Value
-                    );
-                }
-                else if (userRole == "Employee")
-                {
-                    query = query.Where(t => t.AssigneeId == currUserId.Value);
-                }
-            }
+            // 2. AutoMapper will automatically convert the query into an optimal SQL SELECT statement for the TaskDto fields.
+            var items = await query
+                .ProjectTo<TaskDto>(_mapper.ConfigurationProvider)
+                .Skip((parameters.PageNumber - 1) * parameters.PageSize)
+                .Take(parameters.PageSize)
+                .ToListAsync();
 
-            //Apply Filters
-            if (parameters.Status.HasValue)
-                query = query.Where(t => t.Status == parameters.Status.Value);
+            var totalCount = await totalCountTask;
 
-            if (parameters.ProjectId.HasValue)
-                query = query.Where(t => t.ProjectId == parameters.ProjectId.Value);
-
-            //Apply Sorting
-            query = parameters.SortBy.ToLower() switch
-            {
-                "name" => parameters.IsDescending ? query.OrderByDescending(t => t.Name) : query.OrderBy(t => t.Name),
-                "status" => parameters.IsDescending ? query.OrderByDescending(t => t.Status) : query.OrderBy(t => t.Status),
-                _ => parameters.IsDescending ? query.OrderByDescending(t => t.Priority) : query.OrderBy(t => t.Priority)
-            };
-
-            var tasks = await query.ToListAsync();
-            return _mapper.Map<IEnumerable<TaskDto>>(tasks);
+            // 3. Return the packed result
+            return new PagedResult<TaskDto>(items, totalCount, parameters.PageNumber, parameters.PageSize);
         }
 
         public async Task<TaskDto?> GetByIdAsync(int id)
         {
-            var task = await _context.Tasks
-                .Include(t => t.Project)
-                .Include(t => t.Author)
-                .Include(t => t.Assignee)
-                .FirstOrDefaultAsync(t => t.Id == id);
-
+            var task = await _unitOfWork.Tasks.GetTaskWithDetailsByIdAsync(id);
             return _mapper.Map<TaskDto>(task);
         }
 
         public async Task<TaskDto> CreateAsync(TaskCreateDto dto)
         {
-            var task = _mapper.Map<DAL.Entities.Task>(dto);
+            var task = _mapper.Map<ProjectTask>(dto);
 
-            _context.Tasks.Add(task);
-            await _context.SaveChangesAsync();
+            await _unitOfWork.Tasks.AddAsync(task);
+            await _unitOfWork.CompleteAsync();
 
             return await GetByIdAsync(task.Id) ?? _mapper.Map<TaskDto>(task);
         }
 
         public async System.Threading.Tasks.Task DeleteAsync(int id)
         {
-            var task = await _context.Tasks.FindAsync(id);
-            if(task != null)
+            var task = await _unitOfWork.Tasks.GetByIdAsync(id);
+            if (task != null)
             {
-                _context.Tasks.Remove(task);
-                await _context.SaveChangesAsync();
+                _unitOfWork.Tasks.Remove(task);
+                await _unitOfWork.CompleteAsync();
             }
         }
 
         public async System.Threading.Tasks.Task UpdateAsync(TaskUpdateDto dto)
         {
-            var task = await _context.Tasks.FindAsync(dto.Id);
+            var task = await _unitOfWork.Tasks.GetByIdAsync(dto.Id);
             if (task == null)
                 throw new KeyNotFoundException($"Task with ID {dto.Id} not found.");
 
             _mapper.Map(dto, task);
-            await _context.SaveChangesAsync();
+            _unitOfWork.Tasks.Update(task);
+            await _unitOfWork.CompleteAsync();
         }
 
         /// <summary>
         /// Requirements check: Allows quick status workflow changes (ToDo -> InProgress -> Done).
         /// </summary>
-        public async System.Threading.Tasks.Task UpdateStatusAsync(int taskId, DAL.Entities.TaskStatus status)
+        public async System.Threading.Tasks.Task UpdateStatusAsync(int taskId, ProjectManager.DAL.Entities.TaskStatus status)
         {
-            var task = await _context.Tasks.FindAsync(taskId);
+            var task = await _unitOfWork.Tasks.GetByIdAsync(taskId);
             if (task == null)
                 throw new KeyNotFoundException($"Task with ID {taskId} not found.");
 
             task.Status = status;
-            await _context.SaveChangesAsync();
+            _unitOfWork.Tasks.Update(task);
+            await _unitOfWork.CompleteAsync();
         }
 
         /// <summary>
@@ -126,12 +105,13 @@ namespace ProjectManager.BLL.Services.Task
         /// </summary>
         public async System.Threading.Tasks.Task ChangeAssigneeAsync(int taskId, int assigneeId)
         {
-            var task = await _context.Tasks.FindAsync(taskId);
+            var task = await _unitOfWork.Tasks.GetByIdAsync(taskId);
             if (task == null)
                 throw new KeyNotFoundException($"Task with ID {taskId} not found.");
 
             task.AssigneeId = assigneeId;
-            await _context.SaveChangesAsync();
+            _unitOfWork.Tasks.Update(task);
+            await _unitOfWork.CompleteAsync();
         }
     }
 }

@@ -12,6 +12,11 @@ export function useDashboard(){
     const errorMessage = ref('')
     const projects = ref<Project[]>([])
 
+    const pageNumber = ref(1)
+    const pageSize = ref(10)
+    const totalCount = ref(0)
+    const totalPages = ref(0)
+
     const stats = reactive({
         totalProjects: 0,
         highPriority: 0
@@ -40,15 +45,9 @@ export function useDashboard(){
         }
     }
 
-    // Calculation of statistics based on the received projects
-    const calculateStats = (projectsList: Project[]) => {
-        stats.totalProjects = projectsList.length
-        stats.highPriority = projectsList.filter(p => p.priority >= 3).length
-    }
-
     // Loading projects from the backend via our API service
-    const fetchProjects = async () =>{
-        try{
+    const fetchProjects = async () => {
+        try {
             isLoading.value = true
             errorMessage.value = ''
 
@@ -57,18 +56,31 @@ export function useDashboard(){
                 startDateTo: filters.startDateTo || undefined,
                 priority: filters.priority !== 1 ? Number(filters.priority) : undefined,
                 sortBy: filters.sortBy,
-                isDescending: filters.isDescending
+                isDescending: filters.isDescending,
+                pageNumber: pageNumber.value,
+                pageSize: pageSize.value
             }
-            const data = await ProjectsService.getAll(cleanFilters)
-            projects.value = data
-            calculateStats(data)
-        }
-        catch (err: any){
+
+            const pagedData = await ProjectsService.getAll(cleanFilters)
+            
+            projects.value = pagedData.items
+            totalCount.value = pagedData.totalCount
+            totalPages.value = pagedData.totalPages
+            
+            stats.totalProjects = pagedData.totalCount
+            stats.highPriority = pagedData.items.filter(p => p.priority >= 3).length
+        } catch (err: any) {
             console.error('Failed to load projects:', err)
             errorMessage.value = 'Failed to load projects. Please try again.'
-        }
-        finally{
+        } finally {
             isLoading.value = false
+        }
+    }
+
+    const changePage = (newPage: number) => {
+        if (newPage >= 1 && newPage <= totalPages.value) {
+            pageNumber.value = newPage
+            fetchProjects()
         }
     }
 
@@ -77,24 +89,22 @@ export function useDashboard(){
         if (!confirm(`Are you sure you want to delete project "${name}"?`)){
             return
         }
-        try{
+        try {
             isLoading.value = true
             await ProjectsService.delete(id)
             await fetchProjects()
-        }
-        catch (err: any){
-            isLoading.value = true
-            await ProjectsService.delete(id)
-            await fetchProjects()
-        }
-        finally{
+        } catch (err: any) {
+            console.error('Failed to delete project:', err)
+        } finally {
             isLoading.value = false
         }
-    }  
+    }
+    
     // Automatically re-fetch data when any filter changes
     watch(
         () => [filters.startDateFrom, filters.startDateTo, filters.priority, filters.sortBy, filters.isDescending],
         () => {
+            pageNumber.value = 1
             fetchProjects()
         }
     )
@@ -110,6 +120,11 @@ export function useDashboard(){
         projects,
         stats,
         filters,
+        pageNumber,
+        pageSize,
+        totalCount,
+        totalPages,
+        changePage,
         handleLogout,
         deleteProject,
         refetchProjects: fetchProjects

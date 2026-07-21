@@ -15,7 +15,7 @@ namespace ProjectManager.DAL
 
         public DbSet<Project> Projects { get; set; } = null!;
         public DbSet<ProjectEmployee> ProjectEmployees { get; set; } = null!;
-        public DbSet<Entities.Task> Tasks { get; set; } = null!;
+        public DbSet<Entities.ProjectTask> Tasks { get; set; } = null!;
         public DbSet<ProjectDocument> ProjectDocuments { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -46,19 +46,19 @@ namespace ProjectManager.DAL
                 .OnDelete(DeleteBehavior.Restrict);
 
             // 3. Configure Task relationships
-            modelBuilder.Entity<Entities.Task>()
+            modelBuilder.Entity<Entities.ProjectTask>()
                 .HasOne(t => t.Project)
                 .WithMany(p => p.Tasks)
                 .HasForeignKey(t => t.ProjectId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            modelBuilder.Entity<Entities.Task>()
+            modelBuilder.Entity<Entities.ProjectTask>()
                 .HasOne(t => t.Author)
                 .WithMany(e => e.CreatedTasks)
                 .HasForeignKey(t => t.AuthorId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            modelBuilder.Entity<Entities.Task>()
+            modelBuilder.Entity<Entities.ProjectTask>()
                 .HasOne(t => t.Assignee)
                 .WithMany(e => e.AssignedTasks)
                 .HasForeignKey(t => t.AssigneeId)

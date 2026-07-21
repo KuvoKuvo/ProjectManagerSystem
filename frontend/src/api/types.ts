@@ -68,14 +68,6 @@ export interface TaskCreatePayload {
     assigneeId: number;
 }
 
-export interface ProjectFilters {
-    startDateFrom?: string;
-    startDateTo?: string;
-    priority?: number;
-    sortBy?: string;
-    isDescending?: boolean;
-}
-
 export interface ChangePasswordPayload {
   currPassword: string;
   newPassword: string;
@@ -96,4 +88,24 @@ export interface TaskUpdatePayload {
     status: number;
     projectId: number;
     assigneeId: number;
+}
+
+export interface PagedResult<T> {
+  items: T[];
+  totalCount: number;
+  pageNumber: number;
+  pageSize: number;
+  totalPages: number;
+  hasPreviousPage: boolean;
+  hasNextPage: boolean;
+}
+
+export interface ProjectFilters {
+  startDateFrom?: string;
+  startDateTo?: string;
+  priority?: number;
+  sortBy?: string;
+  isDescending?: boolean;
+  pageNumber?: number;
+  pageSize?: number;
 }

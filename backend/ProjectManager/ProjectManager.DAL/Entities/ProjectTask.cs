@@ -8,7 +8,7 @@ namespace ProjectManager.DAL.Entities
     /// <summary>
     /// Represents a specific task assigned within a project.
     /// </summary>
-    public class Task
+    public class ProjectTask
     {
         public int Id { get; set; }
 

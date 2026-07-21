@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using ProjectManager.API.Services;
 using ProjectManager.BLL.Services;
 using ProjectManager.BLL.Services.Employee;
+using ProjectManager.BLL.Services.File;
 using ProjectManager.BLL.Services.Project;
 using ProjectManager.BLL.Services.Task;
 using ProjectManager.DAL;
@@ -19,6 +19,8 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 // Register AppDbContext with SQLite provider
 builder.Services.AddDbContext<AppDbContext>(options => 
     options.UseSqlite(connectionString));
+
+builder.Services.AddScoped<ProjectManager.DAL.UnitOfWork.IUnitOfWork, ProjectManager.DAL.UnitOfWork.UnitOfWork>();
 
 builder.Services.AddAuthentication(options =>
 {

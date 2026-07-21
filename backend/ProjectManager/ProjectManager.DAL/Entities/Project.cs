@@ -35,7 +35,7 @@ namespace ProjectManager.DAL.Entities
         public virtual Employee ProjectManager { get; set; } = null!;
 
         public virtual ICollection<ProjectEmployee> ProjectEmployees { get; set; } = new List<ProjectEmployee>();
-        public virtual ICollection<Task> Tasks { get; set; } = new List<Task>();
+        public virtual ICollection<ProjectTask> Tasks { get; set; } = new List<ProjectTask>();
         public virtual ICollection<ProjectDocument> Documents { get; set; } = new List<ProjectDocument>();
     }
 }

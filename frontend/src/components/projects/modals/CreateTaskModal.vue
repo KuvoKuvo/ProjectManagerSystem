@@ -94,9 +94,24 @@ const updateField = (field: string, value: any, currentTask: any) => {
         >
           Cancel
         </button>
+
+        <div class="space-y-1.5">
+          <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Assignee *</label>
+          <select 
+            :value="newTask.assigneeId ?? ''"
+            @change="updateField('assigneeId', Number(($event.target as HTMLSelectElement).value) || null, newTask)"
+            class="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none font-medium bg-white cursor-pointer"
+          >
+            <option value="" disabled selected>-- Select Assignee --</option>
+            <option v-for="emp in employees" :key="emp.id" :value="emp.id">
+              {{ emp.fullName }}
+            </option>
+          </select>
+        </div>
+
         <button 
           @click="$emit('create')"
-          :disabled="isSaving || !newTask.name"
+          :disabled="isSaving || !newTask.name.trim() || !newTask.assigneeId"
           class="px-4 py-2 text-sm font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
         >
           {{ isSaving ? 'Creating...' : 'Create Task' }}

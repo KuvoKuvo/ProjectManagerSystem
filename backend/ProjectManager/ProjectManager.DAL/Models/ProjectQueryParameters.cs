@@ -2,19 +2,13 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace ProjectManager.BLL.Models
+namespace ProjectManager.DAL.Models
 {
-    /// <summary>
-    /// Encapsulates parameters for filtering and sorting projects.
-    /// </summary>
-    public class ProjectQueryParameters
+    public class ProjectQueryParameters : QueryParameters
     {
-        // Filtering
         public DateTime? StartDateFrom { get; set; }
         public DateTime? StartDateTo { get; set; }
         public int? Priority { get; set; }
-
-        // Sorting
         public string SortBy { get; set; } = "Name";
         public bool IsDescending { get; set; } = false;
     }

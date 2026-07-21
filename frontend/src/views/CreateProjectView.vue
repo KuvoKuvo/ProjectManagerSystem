@@ -95,6 +95,9 @@ const {
                 type="date" 
                 class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none bg-slate-50 text-slate-700"
               />
+              <p v-if="wizardData.endDate && wizardData.startDate && new Date(wizardData.endDate) < new Date(wizardData.startDate)" class="text-[11px] text-red-500 mt-1 font-semibold">
+                ⚠️ End date cannot be earlier than start date.
+              </p>
             </div>
           </div>
 
